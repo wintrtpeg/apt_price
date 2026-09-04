@@ -65,19 +65,25 @@ internal object MolitXml {
      *
      * 국토교통부 응답은 값이 없을 때 태그를 생략하기도 하고 빈 태그로 내려주기도 한다.
      * 둘 다 "값 없음" 으로 똑같이 다룬다.
+     *
+     * 이름을 여러 개 받는 이유: 같은 자료라도 서비스에 따라 태그 이름이 영문(`dealAmount`)
+     * 이기도 하고 한글(`거래금액`)이기도 하다. 앞에 준 이름부터 차례로 찾는다.
      */
-    fun Element.childText(name: String): String? {
+    fun Element.childText(vararg names: String): String? {
         val children = childNodes
-        for (i in 0 until children.length) {
-            val node = children.item(i)
-            if (node.nodeType == Node.ELEMENT_NODE && node.nodeName == name) {
-                val text = node.textContent?.trim()
-                return text?.takeIf { it.isNotEmpty() }
+        for (name in names) {
+            for (i in 0 until children.length) {
+                val node = children.item(i)
+                if (node.nodeType == Node.ELEMENT_NODE && node.nodeName == name) {
+                    val text = node.textContent?.trim()
+                    if (!text.isNullOrEmpty()) return text
+                }
             }
         }
         return null
     }
 
     /** 자식 요소의 텍스트를 Int 로. 숫자가 아니면 `null`. */
-    fun Element.childInt(name: String): Int? = childText(name)?.replace(",", "")?.toIntOrNull()
+    fun Element.childInt(vararg names: String): Int? =
+        childText(*names)?.replace(",", "")?.toIntOrNull()
 }

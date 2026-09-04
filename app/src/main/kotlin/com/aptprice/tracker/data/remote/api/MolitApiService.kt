@@ -14,10 +14,29 @@ import retrofit2.http.Query
  */
 interface MolitApiService {
 
-    /** 국토교통부_아파트 매매 실거래자료 */
+    /**
+     * 국토교통부_아파트 매매 실거래가 **상세** 자료.
+     * 해제여부·등기일자·거래유형까지 포함한다. 가능하면 이쪽을 쓴다.
+     */
     @GET("RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev")
-    suspend fun getAptTrades(
+    suspend fun getAptTradesDetail(
         // 인증키는 이미 퍼센트 인코딩된 상태로 넘긴다. (ServiceKeyProvider 주석 참고)
+        @Query(value = "serviceKey", encoded = true) serviceKey: String,
+        @Query("LAWD_CD") lawdCd: String,
+        @Query("DEAL_YMD") dealYmd: String,
+        @Query("pageNo") pageNo: Int,
+        @Query("numOfRows") numOfRows: Int,
+    ): String
+
+    /**
+     * 국토교통부_아파트 매매 실거래가 자료 (기본).
+     *
+     * 상세 자료에 접근할 수 없을 때 쓰는 대안이다. 활용신청한 서비스가 둘 중
+     * 어느 쪽인지에 따라 접근 가능한 것이 다르므로, 되는 쪽을 찾아 쓴다.
+     * 상세 자료보다 필드가 적어 해제여부 등은 비어 있을 수 있다.
+     */
+    @GET("RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade")
+    suspend fun getAptTradesBasic(
         @Query(value = "serviceKey", encoded = true) serviceKey: String,
         @Query("LAWD_CD") lawdCd: String,
         @Query("DEAL_YMD") dealYmd: String,

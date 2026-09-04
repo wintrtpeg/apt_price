@@ -25,14 +25,41 @@ class FakeMolitApiService(
 
     private val lock = Any()
 
-    override suspend fun getAptTrades(
+    /** 상세 매매를 부른 횟수 (엔드포인트 폴백 검증용) */
+    val detailCalls = mutableListOf<Triple<String, String, Int>>()
+
+    /** 기본 매매를 부른 횟수 */
+    val basicCalls = mutableListOf<Triple<String, String, Int>>()
+
+    /** 상세 매매가 실패하도록 만들 때 쓴다. null 이면 tradeResponder 를 그대로 쓴다. */
+    var detailFailure: (() -> Nothing)? = null
+
+    override suspend fun getAptTradesDetail(
         serviceKey: String,
         lawdCd: String,
         dealYmd: String,
         pageNo: Int,
         numOfRows: Int,
     ): String {
-        synchronized(lock) { tradeCalls += Triple(lawdCd, dealYmd, pageNo) }
+        synchronized(lock) {
+            tradeCalls += Triple(lawdCd, dealYmd, pageNo)
+            detailCalls += Triple(lawdCd, dealYmd, pageNo)
+        }
+        detailFailure?.invoke()
+        return tradeResponder(lawdCd, dealYmd, pageNo)
+    }
+
+    override suspend fun getAptTradesBasic(
+        serviceKey: String,
+        lawdCd: String,
+        dealYmd: String,
+        pageNo: Int,
+        numOfRows: Int,
+    ): String {
+        synchronized(lock) {
+            tradeCalls += Triple(lawdCd, dealYmd, pageNo)
+            basicCalls += Triple(lawdCd, dealYmd, pageNo)
+        }
         return tradeResponder(lawdCd, dealYmd, pageNo)
     }
 
