@@ -34,6 +34,26 @@ object FeedBuilder {
         return visible
             .map { deal -> deal.toUi(baselines[deal.identity()], today) }
             .sortedWith(filter.sort.comparator())
+            .withUniqueIds()
+    }
+
+    /**
+     * 목록 키를 유일하게 만든다.
+     *
+     * 국토교통부 자료에는 행을 가리키는 고유 ID 가 없어 값들로 키를 만드는데,
+     * 같은 단지·같은 평형·같은 날·같은 층·같은 금액인 거래는 실제로 존재한다
+     * (대단지에서 같은 날 같은 가격에 두 건이 신고되는 경우). 원자료에 동(棟) 정보가
+     * 없어 이를 구분할 방법도 없다.
+     *
+     * Compose 의 LazyColumn 은 키가 겹치면 예외를 던지므로, 겹치는 만큼 번호를 붙인다.
+     * 정렬이 끝난 뒤에 붙이므로 같은 목록에서는 같은 키가 나온다.
+     */
+    private fun List<FeedItemUi>.withUniqueIds(): List<FeedItemUi> {
+        val counts = mutableMapOf<String, Int>()
+        return map { item ->
+            val seen = counts.merge(item.id, 1, Int::plus) ?: 1
+            if (seen == 1) item else item.copy(id = "${item.id}#$seen")
+        }
     }
 
     /**

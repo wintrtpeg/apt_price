@@ -11,6 +11,7 @@ import com.aptprice.tracker.domain.model.ComplexAreaKey
 import com.aptprice.tracker.domain.repository.TradeRepository
 import com.aptprice.tracker.presentation.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -137,8 +138,22 @@ class DetailViewModel @Inject constructor(
         syncJob?.cancel()
         syncJob = viewModelScope.launch {
             val plan = TradeQueryPlan.forSingleRegion(period, today(), key.lawdCd)
-            repository.sync(plan)
-            _uiState.update { it.copy(lastFetchedAt = repository.lastFetchedAt()) }
+            try {
+                repository.sync(plan)
+                _uiState.update { it.copy(lastFetchedAt = repository.lastFetchedAt()) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 상세 조회가 실패해도 앱이 죽지 않게 한다. 캐시에 있는 것만 보여준다.
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        emptyMessage = it.emptyMessage
+                            ?: "실거래가를 불러오지 못했습니다: " +
+                            (e.message ?: e::class.simpleName.orEmpty()),
+                    )
+                }
+            }
         }
     }
 
