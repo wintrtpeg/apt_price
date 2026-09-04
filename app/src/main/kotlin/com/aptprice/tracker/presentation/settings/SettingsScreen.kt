@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aptprice.tracker.core.attribution.DataSourceAttribution
+import com.aptprice.tracker.ui.theme.AppShape
+import com.aptprice.tracker.ui.theme.AppSpacing
 
 /**
  * 공공데이터포털 인증키 설정.
@@ -49,6 +51,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -58,7 +61,7 @@ fun SettingsScreen(
                 },
                 title = { Text("인증키 설정", style = MaterialTheme.typography.titleLarge) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
             )
         },
@@ -68,7 +71,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = AppSpacing.Screen, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             StatusRow(isConfigured = state.isConfigured)
@@ -99,6 +102,7 @@ fun SettingsScreen(
                 value = state.input,
                 onValueChange = viewModel::onInputChange,
                 modifier = Modifier.fillMaxWidth(),
+                shape = AppShape.Inner,
                 label = { Text("일반 인증키 (Decoding)") },
                 placeholder = { Text("키를 붙여넣으세요") },
                 singleLine = false,
@@ -118,6 +122,7 @@ fun SettingsScreen(
                 Button(
                     onClick = viewModel::save,
                     enabled = state.input.isNotBlank(),
+                    shape = AppShape.Pill,
                 ) {
                     Text("저장")
                 }
@@ -128,7 +133,8 @@ fun SettingsScreen(
 
             state.savedMessage?.let { message ->
                 Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = AppShape.Inner,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
@@ -166,13 +172,17 @@ fun SettingsScreen(
 private fun StatusRow(isConfigured: Boolean) {
     Surface(
         color = if (isConfigured) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+            MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
+            MaterialTheme.colorScheme.errorContainer
         },
+        shape = AppShape.Card,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(
+            modifier = Modifier.padding(AppSpacing.CardInner),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 text = if (isConfigured) "인증키가 설정되어 있습니다" else "인증키가 설정되지 않았습니다",
                 style = MaterialTheme.typography.titleSmall,

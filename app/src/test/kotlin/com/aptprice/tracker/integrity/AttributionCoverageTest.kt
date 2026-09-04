@@ -6,6 +6,10 @@ import com.aptprice.tracker.presentation.detail.DetailUiState
 import com.aptprice.tracker.presentation.feed.FeedContent
 import com.aptprice.tracker.presentation.feed.FeedFilter
 import com.aptprice.tracker.presentation.feed.FeedUiState
+import com.aptprice.tracker.presentation.feed.RegionSelection
+import com.aptprice.tracker.presentation.search.SearchUiState
+import com.aptprice.tracker.presentation.search.SearchViewModel
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,7 +31,9 @@ class AttributionCoverageTest {
         val contents = listOf(
             "로딩" to FeedContent.Loading,
             "목록" to FeedContent.Items(emptyList()),
-            "결과 없음" to FeedContent.Empty(FeedUiState.emptyMessage(FeedFilter())),
+            "결과 없음" to FeedContent.Empty(
+                FeedUiState.emptyMessage(FeedFilter(regions = RegionSelection.all())),
+            ),
             "오류" to FeedContent.Error("조회 실패", retryable = true),
         )
         val fetchedAt = listOf(
@@ -57,6 +63,28 @@ class AttributionCoverageTest {
             assertTrue("[$name] 출처 문구가 비어 있다", label.isNotBlank())
             assertTrue("[$name] 제공기관이 없다: $label", label.contains(provider))
         }
+    }
+
+    @Test
+    fun `검색 화면은 어떤 상태에서도 출처를 표기한다`() {
+        val states = listOf(
+            "빈 입력" to SearchUiState(),
+            "짧은 입력" to SearchUiState(query = "래", tooShort = true),
+            "결과 없음" to SearchUiState(query = "없는단지", message = SearchViewModel.NOT_FOUND),
+        )
+        states.forEach { (name, state) ->
+            val label = state.attributionLabel()
+            assertTrue("[$name] 출처 문구가 비어 있다", label.isNotBlank())
+            assertTrue("[$name] 제공기관이 없다: $label", label.contains(provider))
+        }
+    }
+
+    @Test
+    fun `검색 화면은 검색 범위가 받아온 자료라는 사실을 밝힌다`() {
+        // API 가 단지명 조회를 제공하지 않아 전국을 훑을 수 없다. 그걸 감추면
+        // "없는 단지" 와 "아직 받아오지 않은 단지" 를 사용자가 구분할 수 없다.
+        assertTrue(SearchUiState().attributionLabel().contains("받아온 자료"))
+        assertTrue(SearchViewModel.NOT_FOUND.contains("지역과 기간"))
     }
 
     @Test
@@ -112,10 +140,21 @@ class AttributionCoverageTest {
 
     @Test
     fun `빈 결과 문구는 조회 조건을 함께 알려 준다`() {
-        val message = FeedUiState.emptyMessage(FeedFilter())
+        // 기본값은 "지역 선택 안 함" 이라 조회 자체가 없다. 조건을 알리는 문구는
+        // 실제로 조회한 뒤 결과가 없을 때의 것이다.
+        val queried = FeedFilter(regions = RegionSelection.all())
+        val message = FeedUiState.emptyMessage(queried)
         assertTrue(message.contains(DataSourceAttribution.EMPTY_RESULT))
         // 어떤 조건으로 조회했는지 모르면 "없다" 는 말이 쓸모가 없다.
         assertTrue(message.contains("최근 2주"))
         assertTrue(message.contains("매매"))
+    }
+
+    @Test
+    fun `지역을 고르기 전에는 조회 결과가 없다고 말하지 않는다`() {
+        val message = FeedUiState.emptyMessage(FeedFilter())
+        assertEquals(FeedUiState.NO_REGION_SELECTED, message)
+        // 조회한 적이 없는데 "거래 데이터 없음" 이라고 하면 사실과 다르다.
+        assertFalse(message.contains(DataSourceAttribution.EMPTY_RESULT))
     }
 }

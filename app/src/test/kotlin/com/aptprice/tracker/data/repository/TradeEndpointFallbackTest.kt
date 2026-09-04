@@ -3,6 +3,7 @@ package com.aptprice.tracker.data.repository
 import com.aptprice.tracker.core.time.TradePeriod
 import com.aptprice.tracker.core.time.TradeQueryPlan
 import com.aptprice.tracker.data.remote.api.ServiceKeyProvider
+import com.aptprice.tracker.data.remote.throttle.MolitHttpException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -107,6 +108,39 @@ class TradeEndpointFallbackTest {
             report.failures.all { it.message.startsWith("[매매]") },
         )
         assertTrue(report.failures.first().message.contains("AccessDenied"))
+    }
+
+    @Test
+    fun `429 는 다른 엔드포인트로 넘어가지 않는다`() = runBlocking {
+        val api = FakeMolitApiService({ _, _, _ -> tradeXml }, { _, _, _ -> emptyXml })
+        api.detailFailure = { throw MolitHttpException(MolitHttpException.TOO_MANY_REQUESTS) }
+        val dao = FakeTradeDao()
+        val plan = TradeQueryPlan.of(TradePeriod.TWO_WEEKS, today, listOf("11680"))
+
+        val report = repository(api, dao).sync(plan)
+
+        // 이미 요청이 몰려 막힌 상태다. 여기서 다른 서비스까지 부르면 요청량이 두 배가 되어
+        // 상황이 더 나빠진다. 폴백은 "그 서비스가 없다(404)" 일 때만 한다.
+        assertEquals("막힌 상태에서 다른 서비스를 부르면 안 된다", 0, api.basicCalls.size)
+        assertEquals(2, report.failures.size)
+        assertTrue(
+            "무엇 때문에 실패했는지 화면에 남아야 한다: ${report.failures.first().message}",
+            report.failures.all { it.message.contains("429") },
+        )
+    }
+
+    @Test
+    fun `404 는 다른 엔드포인트로 넘어간다`() = runBlocking {
+        val api = FakeMolitApiService({ _, _, _ -> tradeXml }, { _, _, _ -> emptyXml })
+        api.detailFailure = { throw MolitHttpException(MolitHttpException.NOT_FOUND) }
+        val dao = FakeTradeDao()
+        val plan = TradeQueryPlan.of(TradePeriod.TWO_WEEKS, today, listOf("11680"))
+
+        val report = repository(api, dao).sync(plan)
+
+        assertTrue("기본 자료로 성공해야 한다: ${report.failures.map { it.message }}", report.failures.isEmpty())
+        assertTrue(api.basicCalls.isNotEmpty())
+        assertEquals(2, dao.rows.size)
     }
 
     @Test

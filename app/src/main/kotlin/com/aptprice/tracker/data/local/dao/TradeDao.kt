@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import com.aptprice.tracker.data.local.entity.ComplexSearchRow
 import com.aptprice.tracker.data.local.entity.TradeEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -67,6 +68,36 @@ interface TradeDao {
         """,
     )
     fun observeAreasOfComplex(complexKey: String): Flow<List<Double>>
+
+    /**
+     * 단지명으로 검색한다. 매매·전월세 양쪽에서 찾아 단지 단위로 합친다.
+     *
+     * 받아온 자료 안에서만 찾는다. API 가 단지명 조회를 제공하지 않기 때문이다.
+     *
+     * `latestAreaM2` 는 **가장 최근 거래의 전용면적**이다. SQLite 는 집계가 `MAX()`
+     * 하나뿐일 때 함께 고른 일반 컬럼을 그 최댓값 행에서 가져온다(bare column 규칙).
+     * `COUNT(*)` 는 min/max 가 아니므로 이 규칙을 깨지 않는다.
+     * 상세 화면을 열 때 평형이 하나는 정해져 있어야 해서 함께 뽑는다.
+     */
+    @Query(
+        """
+        SELECT complexKey, aptName, lawdCd, umdNm,
+               MAX(dealDateEpochDay) AS latestEpochDay,
+               exclusiveAreaM2 AS latestAreaM2,
+               COUNT(*) AS dealCount
+        FROM (
+            SELECT complexKey, aptName, lawdCd, umdNm, dealDateEpochDay, exclusiveAreaM2
+            FROM apt_trade WHERE aptName LIKE :pattern
+            UNION ALL
+            SELECT complexKey, aptName, lawdCd, umdNm, dealDateEpochDay, exclusiveAreaM2
+            FROM apt_rent WHERE aptName LIKE :pattern
+        )
+        GROUP BY complexKey
+        ORDER BY latestEpochDay DESC
+        LIMIT :limit
+        """,
+    )
+    fun searchComplexes(pattern: String, limit: Int): Flow<List<ComplexSearchRow>>
 
     @Query("SELECT COUNT(*) FROM apt_trade")
     suspend fun count(): Int

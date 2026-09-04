@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +36,9 @@ import com.aptprice.tracker.core.attribution.DataSourceAttribution
 import com.aptprice.tracker.core.time.TradePeriod
 import com.aptprice.tracker.presentation.detail.components.ChartLegend
 import com.aptprice.tracker.presentation.detail.components.PriceChart
+import com.aptprice.tracker.ui.components.AppCard
+import com.aptprice.tracker.ui.components.ChoiceChip
+import com.aptprice.tracker.ui.theme.AppSpacing
 
 /**
  * 단지 상세 — 평형 선택 칩 + 실거래가 시계열 차트 + 거래 이력.
@@ -54,6 +56,7 @@ fun DetailScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -79,7 +82,7 @@ fun DetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
             )
         },
@@ -106,18 +109,22 @@ fun DetailScreen(
                     chart == null || chart.isEmpty -> ChartEmptyView(
                         message = state.emptyMessage ?: DataSourceAttribution.EMPTY_RESULT,
                     )
-                    else -> Column(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    else -> AppCard(
+                        modifier = Modifier.padding(horizontal = AppSpacing.Screen),
                     ) {
-                        PriceChart(data = chart)
-                        ChartLegend(data = chart)
-                        Text(
-                            text = "점은 실제 신고된 거래입니다. 신고가 오래 없던 구간은 " +
-                                "선을 잇지 않습니다.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Column(
+                            modifier = Modifier.padding(AppSpacing.CardInner),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            PriceChart(data = chart)
+                            ChartLegend(data = chart)
+                            Text(
+                                text = "점은 실제 신고된 거래입니다. 신고가 오래 없던 구간은 " +
+                                    "선을 잇지 않습니다.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -137,20 +144,20 @@ private fun AreaChipRow(chips: List<AreaChip>, onSelect: (AreaChip) -> Unit) {
             text = "평형 선택",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp),
+            modifier = Modifier.padding(start = AppSpacing.Screen),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = AppSpacing.Screen),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             chips.forEach { chip ->
-                FilterChip(
+                ChoiceChip(
+                    label = chip.label,
                     selected = chip.selected,
                     onClick = { onSelect(chip) },
-                    label = { Text(chip.label, style = MaterialTheme.typography.labelLarge) },
                 )
             }
         }
@@ -163,14 +170,14 @@ private fun PeriodRow(selected: TradePeriod, onSelect: (TradePeriod) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = AppSpacing.Screen),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         TradePeriod.chartOptions.forEach { period ->
-            FilterChip(
+            ChoiceChip(
+                label = period.shortLabel,
                 selected = period == selected,
                 onClick = { onSelect(period) },
-                label = { Text(period.shortLabel, style = MaterialTheme.typography.labelLarge) },
             )
         }
     }
@@ -200,14 +207,15 @@ private fun ChartEmptyView(message: String) {
 
 @Composable
 private fun HistoryHeader(count: Int) {
-    Column {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Text(
-            text = "거래 이력 ${count}건",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
-        )
-    }
+    Text(
+        text = "거래 이력 ${count}건",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(
+            start = AppSpacing.Screen,
+            end = AppSpacing.Screen,
+            top = 12.dp,
+        ),
+    )
 }
 
 @Composable
@@ -216,7 +224,7 @@ private fun HistoryRowView(row: HistoryRow) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = AppSpacing.Screen, vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -256,7 +264,7 @@ private fun HistoryRowView(row: HistoryRow) {
 
 @Composable
 private fun AttributionBar(label: String) {
-    Surface(color = MaterialTheme.colorScheme.surface) {
+    Surface(color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxWidth()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text(
@@ -265,7 +273,7 @@ private fun AttributionBar(label: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = AppSpacing.Screen, vertical = 8.dp),
             )
         }
     }

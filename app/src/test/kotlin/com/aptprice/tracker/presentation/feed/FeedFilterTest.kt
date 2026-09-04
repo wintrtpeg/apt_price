@@ -85,7 +85,7 @@ class FeedFilterTest {
     fun `지역을 좁히면 조회 횟수가 줄어든다`() {
         val today = LocalDate.of(2026, 9, 4)
 
-        val all = FeedFilter(period = TradePeriod.FIVE_YEARS)
+        val all = FeedFilter(period = TradePeriod.FIVE_YEARS, regions = RegionSelection.all())
         val allPlan = TradeQueryPlan.of(all.period, today, all.regions.codes())
         assertEquals(61 * 36, allPlan.requestCount)
         assertTrue(allPlan.isHeavy)
@@ -97,13 +97,24 @@ class FeedFilterTest {
     }
 
     @Test
-    fun `기본 필터는 최근 2주 매매 전체 지역이다`() {
+    fun `기본 필터는 최근 2주 매매이고 지역은 고르지 않은 상태다`() {
         val filter = FeedFilter()
         assertEquals(TradePeriod.TWO_WEEKS, filter.period)
         assertEquals(com.aptprice.tracker.domain.model.DealTab.SALE, filter.tab)
         assertEquals(FeedSort.LATEST, filter.sort)
-        assertTrue(filter.regions.isAll)
         assertTrue(filter.areaBuckets.isEmpty())
+
+        // 36개 지역을 기본으로 두면 앱을 켜자마자 2천여 회를 조회해 429 로 막힌다.
+        // 볼 지역은 사용자가 고르고 확인을 눌러 적용한다.
+        assertTrue("기본은 선택 없음이다", filter.regions.isEmpty)
+        assertFalse(filter.regions.isAll)
+        assertEquals(0, TradeQueryPlan.of(filter.period, LocalDate.of(2026, 9, 4), filter.regions.codes()).requestCount)
+    }
+
+    @Test
+    fun `아무것도 고르지 않은 상태는 지역 없음으로 요약된다`() {
+        assertEquals("지역 없음", RegionSelection.none().summaryLabel())
+        assertTrue(RegionSelection.none().isEmpty)
     }
 
     @Test

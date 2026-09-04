@@ -51,13 +51,46 @@ class FeedViewModelTest {
         previousDepositManwon = null, previousMonthlyRentManwon = null,
     )
 
+    /**
+     * 기본값은 "지역 선택 안 함" 이므로, 조회가 일어나는 상황을 보려면 지역을 먼저 적용한다.
+     * 사용자가 지역 시트에서 확인을 누른 뒤와 같은 상태다.
+     */
     private fun viewModel(
         repository: FakeTradeRepository,
         keyStore: FakeServiceKeyStore = FakeServiceKeyStore("TEST_KEY"),
+        regions: RegionSelection? = RegionSelection.all(),
     ) = FeedViewModel(repository, ServiceKeyProvider(keyStore, buildConfigKey = ""), clock)
+        .also { vm -> regions?.let(vm::applyRegions) }
 
     @Test
-    fun `시작하면 기본 조건으로 조회한다`() = runTest {
+    fun `지역을 고르기 전에는 조회하지 않는다`() = runTest {
+        val repo = FakeTradeRepository()
+        // 지역을 적용하지 않은, 앱을 막 켠 상태
+        val vm = viewModel(repo, regions = null)
+
+        // 36개 지역을 기본으로 두었더니 앱을 켜자마자 429 로 막혔다. 그 회귀를 막는다.
+        assertTrue("지역이 없으면 한 번도 부르지 않는다", repo.syncedPlans.isEmpty())
+        assertTrue(vm.uiState.value.filter.regions.isEmpty)
+        val content = vm.uiState.value.content
+        assertTrue(content is FeedContent.Empty)
+        assertEquals(FeedUiState.NO_REGION_SELECTED, (content as FeedContent.Empty).message)
+    }
+
+    @Test
+    fun `지역을 적용해야 조회가 시작된다`() = runTest {
+        val repo = FakeTradeRepository()
+        val vm = viewModel(repo, regions = null)
+
+        vm.applyRegions(RegionSelection.ofGroups(RegionGroup.SEONGNAM))
+
+        assertEquals(1, repo.syncedPlans.size)
+        assertEquals(3, repo.syncedPlans.single().regionCount)
+        assertEquals(TradePeriod.TWO_WEEKS, repo.syncedPlans.single().period)
+        assertEquals(DealTab.SALE, vm.uiState.value.filter.tab)
+    }
+
+    @Test
+    fun `전체를 적용하면 기본 조건으로 조회한다`() = runTest {
         val repo = FakeTradeRepository()
         val vm = viewModel(repo)
 
@@ -191,10 +224,7 @@ class FeedViewModelTest {
         val before = repo.syncedPlans.size
 
         // 성남 3곳만 남긴다. 3 × 61 = 183회로 기준선(200) 아래다.
-        vm.toggleRegionGroup(RegionGroup.SEOUL)
-        vm.toggleRegionGroup(RegionGroup.YONGIN)
-        vm.toggleRegionGroup(RegionGroup.SUWON)
-        vm.toggleRegionGroup(RegionGroup.DONGTAN)
+        vm.applyRegions(RegionSelection.ofGroups(RegionGroup.SEONGNAM))
 
         assertEquals(3, vm.uiState.value.filter.regions.codes().size)
         assertEquals(183, vm.currentRequestCount())

@@ -15,6 +15,7 @@ import com.aptprice.tracker.data.local.dao.TradeDao
 import com.aptprice.tracker.data.remote.api.MolitApiService
 import com.aptprice.tracker.data.remote.api.ServiceKeyProvider
 import com.aptprice.tracker.data.remote.api.ServiceKeyStore
+import com.aptprice.tracker.data.remote.throttle.ThrottleInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,6 +75,8 @@ object AppModule {
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        // 요청 간격 조절과 429 재시도. 속도 제한은 전송 계층에서 처리한다.
+        .addInterceptor(ThrottleInterceptor())
         .apply {
             if (BuildConfig.DEBUG) {
                 // 인증키가 로그에 남지 않도록 본문/헤더는 찍지 않는다.

@@ -60,11 +60,23 @@ val AppTypography = Typography(
     labelSmall = pretendard(11, 15, FontWeight.Medium),
 )
 
-/** 금액처럼 자리수가 흔들리면 안 되는 숫자에 쓰는 스타일. */
+/**
+ * 금액처럼 자리수가 흔들리면 안 되는 숫자에 쓰는 스타일.
+ *
+ * 카드에서 가장 먼저 읽혀야 하는 값이므로 본문보다 확실히 크게 잡고,
+ * 자간을 좁혀 숫자 덩어리가 한 단어처럼 보이게 한다.
+ */
 val PriceTextStyle = TextStyle(
     fontFamily = Pretendard,
     fontWeight = FontWeight.Bold,
-    fontSize = 20.sp,
-    lineHeight = 26.sp,
-    letterSpacing = (-0.4).sp,
+    fontSize = 23.sp,
+    lineHeight = 29.sp,
+    letterSpacing = (-0.7).sp,
+)
+
+/** 상세 화면 머리말처럼 금액을 더 크게 세울 때. */
+val PriceLargeTextStyle = PriceTextStyle.copy(
+    fontSize = 30.sp,
+    lineHeight = 38.sp,
+    letterSpacing = (-1.0).sp,
 )

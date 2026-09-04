@@ -31,8 +31,10 @@ class TradeRepositoryImplTest {
     private val now: Instant = Instant.parse("2026-09-04T12:00:00Z")
     private val clock: Clock = Clock.fixed(now, ZoneOffset.UTC)
 
-    private val tradeDao = FakeTradeDao()
     private val rentDao = FakeRentDao()
+
+    // 단지 검색은 매매·전월세를 합쳐 찾으므로 매매 DAO 가 전월세 표도 볼 수 있어야 한다.
+    private val tradeDao = FakeTradeDao(rentRows = { rentDao.rows })
     private val syncStateDao = FakeSyncStateDao()
 
     private fun tradeXml(aptName: String, umdNm: String, sggCd: String, amount: String = "50,000") = """
@@ -265,6 +267,82 @@ class TradeRepositoryImplTest {
         // 행이 쌓이지 않고 갈아끼워진다.
         assertEquals(2, tradeDao.rows.size)
         assertTrue(tradeDao.rows.all { it.dealAmountManwon == 62_000L })
+    }
+
+    @Test
+    fun `단지 검색은 매매와 전월세를 합쳐 찾는다`() = runBlocking {
+        val rentXml = """
+            <response><header><resultCode>000</resultCode></header><body><items>
+              <item><aptNm>힐스테이트역삼</aptNm><deposit>50,000</deposit><monthlyRent>0</monthlyRent>
+                <dealYear>2026</dealYear><dealMonth>9</dealMonth><dealDay>2</dealDay>
+                <excluUseAr>59.99</excluUseAr><sggCd>11680</sggCd><umdNm>역삼동</umdNm></item>
+            </items><numOfRows>1000</numOfRows><pageNo>1</pageNo><totalCount>1</totalCount></body></response>
+        """.trimIndent()
+        val api = api(
+            trade = { _, dealYmd, _ ->
+                if (dealYmd == "202609") tradeXml("래미안역삼", "역삼동", "11680") else emptyXml
+            },
+            rent = { _, dealYmd, _ -> if (dealYmd == "202609") rentXml else emptyXml },
+        )
+        val repository = repository(api)
+        repository.sync(TradeQueryPlan.of(TradePeriod.TWO_WEEKS, clock.today(), listOf("11680")))
+
+        val fromTrade = repository.searchComplexes("래미안").first()
+        // 매매가 한 건도 없고 전세만 있는 단지도 검색에 나와야 한다.
+        val fromRent = repository.searchComplexes("힐스").first()
+
+        assertEquals(1, fromTrade.size)
+        assertEquals("래미안역삼", fromTrade.single().aptName)
+        assertEquals(1, fromRent.size)
+        assertEquals("힐스테이트역삼", fromRent.single().aptName)
+    }
+
+    @Test
+    fun `검색 결과에 지역과 최근 거래 평형이 함께 온다`() = runBlocking {
+        val api = api(
+            trade = { _, dealYmd, _ ->
+                if (dealYmd == "202609") tradeXml("래미안역삼", "역삼동", "11680") else emptyXml
+            },
+        )
+        val repository = repository(api)
+        repository.sync(TradeQueryPlan.of(TradePeriod.TWO_WEEKS, clock.today(), listOf("11680")))
+
+        val found = repository.searchComplexes("래미안").first().single()
+
+        assertEquals("강남구 역삼동", found.regionLabel)
+        // 상세 화면은 (단지 + 평형) 단위라 평형이 정해져 있어야 열린다.
+        assertEquals(84.97, found.latestAreaM2, 0.001)
+        assertEquals(1, found.dealCount)
+        assertEquals(84.97, found.openKey().areaM2!!, 0.001)
+    }
+
+    @Test
+    fun `한 글자로는 검색하지 않는다`() = runBlocking {
+        val api = api(
+            trade = { _, dealYmd, _ ->
+                if (dealYmd == "202609") tradeXml("래미안역삼", "역삼동", "11680") else emptyXml
+            },
+        )
+        val repository = repository(api)
+        repository.sync(TradeQueryPlan.of(TradePeriod.TWO_WEEKS, clock.today(), listOf("11680")))
+
+        assertTrue(repository.searchComplexes("래").first().isEmpty())
+        assertTrue(repository.searchComplexes(" ").first().isEmpty())
+        assertTrue(repository.searchComplexes("").first().isEmpty())
+    }
+
+    @Test
+    fun `대상 지역 밖의 단지는 검색에도 나오지 않는다`() = runBlocking {
+        // 화성시(41590) 중 동탄 관할이 아닌 동. 목록에서 걸러지듯 검색에서도 걸러져야 한다.
+        val api = api(
+            trade = { _, dealYmd, _ ->
+                if (dealYmd == "202609") tradeXml("래미안봉담", "봉담읍", "41590") else emptyXml
+            },
+        )
+        val repository = repository(api)
+        repository.sync(TradeQueryPlan.of(TradePeriod.TWO_WEEKS, clock.today(), listOf("41590")))
+
+        assertTrue(repository.searchComplexes("래미안").first().isEmpty())
     }
 
     @Test

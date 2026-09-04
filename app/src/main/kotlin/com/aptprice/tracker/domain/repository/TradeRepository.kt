@@ -5,6 +5,7 @@ import com.aptprice.tracker.core.time.TradeQueryPlan
 import com.aptprice.tracker.domain.model.AptDeal
 import com.aptprice.tracker.domain.model.AptRent
 import com.aptprice.tracker.domain.model.AptTrade
+import com.aptprice.tracker.domain.model.ComplexSummary
 import com.aptprice.tracker.domain.model.DealTab
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -32,6 +33,12 @@ interface TradeRepository {
 
     /** 단지 + 평형의 전세 시계열 (매매와 겹쳐 그리기 위한 것). 오래된 순. */
     fun observeJeonseSeries(complexAreaKey: String, period: TradePeriod): Flow<List<AptRent>>
+
+    /**
+     * 단지명으로 검색한다. **이미 받아온 자료 안에서만** 찾는다.
+     * 두 글자 미만이면 빈 목록을 돌려준다.
+     */
+    fun searchComplexes(query: String): Flow<List<ComplexSummary>>
 
     /** 단지 안에 존재하는 전용면적 목록 (평형 선택 칩용). */
     fun observeAreasOfComplex(complexKey: String): Flow<List<Double>>

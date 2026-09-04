@@ -10,11 +10,13 @@ import androidx.navigation.navArgument
 import com.aptprice.tracker.domain.model.ComplexAreaKey
 import com.aptprice.tracker.presentation.detail.DetailScreen
 import com.aptprice.tracker.presentation.feed.FeedScreen
+import com.aptprice.tracker.presentation.search.SearchScreen
 import com.aptprice.tracker.presentation.settings.SettingsScreen
 
 object Routes {
     const val FEED = "feed"
     const val SETTINGS = "settings"
+    const val SEARCH = "search"
 
     /** 단지 상세. 인자는 URL 안전 Base64 로 인코딩된 단지+평형 키다. */
     const val ARG_COMPLEX_AREA_KEY = "complexAreaKey"
@@ -31,6 +33,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             FeedScreen(
                 onDealClick = { key -> navController.navigate(Routes.detailOf(key)) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                onSearchClick = { navController.navigate(Routes.SEARCH) },
             )
         }
         composable(
@@ -38,6 +41,12 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             arguments = listOf(navArgument(Routes.ARG_COMPLEX_AREA_KEY) { type = NavType.StringType }),
         ) {
             DetailScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SEARCH) {
+            SearchScreen(
+                onBack = { navController.popBackStack() },
+                onOpenComplex = { key -> navController.navigate(Routes.detailOf(key)) },
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { navController.popBackStack() })

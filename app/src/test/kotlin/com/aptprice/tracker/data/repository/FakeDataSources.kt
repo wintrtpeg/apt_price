@@ -3,6 +3,7 @@ package com.aptprice.tracker.data.repository
 import com.aptprice.tracker.data.local.dao.RentDao
 import com.aptprice.tracker.data.local.dao.SyncStateDao
 import com.aptprice.tracker.data.local.dao.TradeDao
+import com.aptprice.tracker.data.local.entity.ComplexSearchRow
 import com.aptprice.tracker.data.local.entity.RentEntity
 import com.aptprice.tracker.data.local.entity.SyncStateEntity
 import com.aptprice.tracker.data.local.entity.TradeEntity
@@ -77,7 +78,13 @@ class FakeMolitApiService(
     val totalCalls: Int get() = tradeCalls.size + rentCalls.size
 }
 
-class FakeTradeDao : TradeDao {
+/**
+ * @param rentRows 전월세 표. 단지 검색이 매매·전월세를 합쳐 찾기 때문에 함께 본다.
+ *                 (실제 DAO 는 두 테이블을 UNION 한다)
+ */
+class FakeTradeDao(
+    private val rentRows: () -> List<RentEntity> = { emptyList() },
+) : TradeDao {
     val rows = mutableListOf<TradeEntity>()
     private val version = MutableStateFlow(0)
     private val ids = AtomicInteger(0)
@@ -118,12 +125,47 @@ class FakeTradeDao : TradeDao {
         rows.filter { it.complexKey == complexKey }.map { it.exclusiveAreaM2 }.distinct().sorted()
     }
 
+    override fun searchComplexes(pattern: String, limit: Int): Flow<List<ComplexSearchRow>> = version.map {
+        val needle = pattern.trim('%')
+        val union = rows.map {
+            SearchInput(it.complexKey, it.aptName, it.lawdCd, it.umdNm, it.dealDateEpochDay, it.exclusiveAreaM2)
+        } + rentRows().map {
+            SearchInput(it.complexKey, it.aptName, it.lawdCd, it.umdNm, it.dealDateEpochDay, it.exclusiveAreaM2)
+        }
+        union.filter { it.aptName.contains(needle) }
+            .groupBy { it.complexKey }
+            .map { (complexKey, group) ->
+                // SQLite 의 bare column 규칙과 같이, 가장 최근 거래 행에서 값을 가져온다.
+                val latest = group.maxByOrNull { it.epochDay }!!
+                ComplexSearchRow(
+                    complexKey = complexKey,
+                    aptName = latest.aptName,
+                    lawdCd = latest.lawdCd,
+                    umdNm = latest.umdNm,
+                    latestEpochDay = latest.epochDay,
+                    latestAreaM2 = latest.areaM2,
+                    dealCount = group.size,
+                )
+            }
+            .sortedByDescending { it.latestEpochDay }
+            .take(limit)
+    }
+
     override suspend fun count(): Int = rows.size
 
     override suspend fun clear() {
         rows.clear()
         version.value++
     }
+
+    private data class SearchInput(
+        val complexKey: String,
+        val aptName: String,
+        val lawdCd: String,
+        val umdNm: String,
+        val epochDay: Long,
+        val areaM2: Double,
+    )
 }
 
 class FakeRentDao : RentDao {

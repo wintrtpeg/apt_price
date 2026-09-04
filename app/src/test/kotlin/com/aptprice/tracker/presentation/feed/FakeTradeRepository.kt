@@ -5,6 +5,7 @@ import com.aptprice.tracker.core.time.TradeQueryPlan
 import com.aptprice.tracker.domain.model.AptDeal
 import com.aptprice.tracker.domain.model.AptRent
 import com.aptprice.tracker.domain.model.AptTrade
+import com.aptprice.tracker.domain.model.ComplexSummary
 import com.aptprice.tracker.domain.model.DealTab
 import com.aptprice.tracker.domain.repository.SyncProgress
 import com.aptprice.tracker.domain.repository.SyncReport
@@ -67,6 +68,33 @@ class FakeTradeRepository(
 
     override fun observeAreasOfComplex(complexKey: String): Flow<List<Double>> =
         deals.map { list -> list.filter { it.complexKey == complexKey }.map { it.exclusiveAreaM2 }.distinct() }
+
+    /** 검색어를 받은 그대로 기록해 두면 디바운스·최소 길이 동작을 확인할 수 있다. */
+    val searchedQueries = mutableListOf<String>()
+
+    override fun searchComplexes(query: String): Flow<List<ComplexSummary>> {
+        searchedQueries += query
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return deals.map { emptyList() }
+        return deals.map { list ->
+            list.filter { it.aptName.contains(trimmed) }
+                .groupBy { it.complexKey }
+                .map { (complexKey, group) ->
+                    val latest = group.maxByOrNull { it.dealDate }!!
+                    ComplexSummary(
+                        complexKey = complexKey,
+                        aptName = latest.aptName,
+                        lawdCd = latest.lawdCd,
+                        umdNm = latest.umdNm,
+                        regionLabel = "${latest.lawdCd} ${latest.umdNm}",
+                        latestDealDate = latest.dealDate,
+                        latestAreaM2 = latest.exclusiveAreaM2,
+                        dealCount = group.size,
+                    )
+                }
+                .sortedByDescending { it.latestDealDate }
+        }
+    }
 
     override suspend fun sync(
         plan: TradeQueryPlan,

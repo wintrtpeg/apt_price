@@ -99,6 +99,22 @@ data class SyncStateEntity(
     val failureCount: Int,
 )
 
+/**
+ * 단지 검색 결과 한 줄 (Room 프로젝션).
+ * 매매·전월세 양쪽에서 단지명을 찾아 합친 것이다.
+ */
+data class ComplexSearchRow(
+    val complexKey: String,
+    val aptName: String,
+    val lawdCd: String,
+    val umdNm: String,
+    val latestEpochDay: Long,
+    /** 가장 최근 거래의 전용면적. 상세 화면을 어느 평형으로 열지 정하는 데 쓴다. */
+    val latestAreaM2: Double,
+    /** 받아온 자료 안에서 이 단지의 거래 건수 (매매 + 전월세) */
+    val dealCount: Int,
+)
+
 /** 캐시 단위를 나누는 엔드포인트 구분. */
 enum class SyncEndpoint {
     /** 아파트 매매 실거래자료 */
