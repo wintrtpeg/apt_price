@@ -11,6 +11,7 @@ import com.aptprice.tracker.domain.model.DealTab
 import com.aptprice.tracker.domain.region.RegionGroup
 import com.aptprice.tracker.domain.repository.TradeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -163,16 +164,38 @@ class FeedViewModel @Inject constructor(
                 it.copy(sync = SyncStatus(inProgress = true, completed = 0, total = plan.requestCount * 2))
             }
 
-            val report = repository.sync(plan) { progress ->
-                _uiState.update {
-                    it.copy(
-                        sync = SyncStatus(
-                            inProgress = true,
-                            completed = progress.completed,
-                            total = progress.total,
-                        ),
+            val report = try {
+                repository.sync(plan) { progress ->
+                    _uiState.update {
+                        it.copy(
+                            sync = SyncStatus(
+                                inProgress = true,
+                                completed = progress.completed,
+                                total = progress.total,
+                            ),
+                        )
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 여기까지 올라온 예외는 앱을 종료시킨다. 화면에 알리고 끝낸다.
+                _uiState.update { state ->
+                    state.copy(
+                        sync = SyncStatus(inProgress = false),
+                        isRefreshing = false,
+                        content = if (state.content is FeedContent.Items) {
+                            state.content
+                        } else {
+                            FeedContent.Error(
+                                message = "실거래가를 불러오지 못했습니다: " +
+                                    (e.message ?: e::class.simpleName.orEmpty()),
+                                retryable = true,
+                            )
+                        },
                     )
                 }
+                return@launch
             }
 
             val (parseNotice, partialNotice) = FeedUiState.noticesFrom(report)

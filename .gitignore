@@ -22,4 +22,6 @@ release/
 keystore.properties
 *.jks
 *.keystore
+# 고정 디버그 키는 커밋한다 (아래 주석 참고)
+!keystore/debug.keystore
 secrets.properties

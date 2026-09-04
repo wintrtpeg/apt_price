@@ -118,7 +118,15 @@ data class DetailUiState(
                     canceled = rent.canceled,
                 )
             }
-            return (tradeRows + rentRows).sortedByDescending { it.dateLabel }
+            // 같은 값의 거래가 실제로 존재하므로(원자료에 동 정보가 없어 구분 불가),
+            // 목록 키가 겹치지 않도록 번호를 붙인다. Compose 는 키가 겹치면 예외를 던진다.
+            val counts = mutableMapOf<String, Int>()
+            return (tradeRows + rentRows)
+                .sortedByDescending { it.dateLabel }
+                .map { row ->
+                    val seen = counts.merge(row.id, 1, Int::plus) ?: 1
+                    if (seen == 1) row else row.copy(id = "${row.id}#$seen")
+                }
         }
 
         /** 키에서 화면 제목에 쓸 지역 문구를 만든다. */
