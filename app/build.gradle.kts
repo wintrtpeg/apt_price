@@ -29,6 +29,29 @@ android {
     namespace = "com.aptprice.tracker"
     compileSdk = 35
 
+    /**
+     * 디버그 서명 키를 저장소에 고정해 둔다.
+     *
+     * 기본 동작은 빌드하는 기기마다 debug.keystore 를 새로 만드는 것이다. CI 러너는
+     * 매번 새로 뜨므로 빌드할 때마다 서명이 달라지고, 그러면 기존에 깔린 앱 위에
+     * 덮어쓰기 설치가 되지 않는다("서명이 일치하지 않습니다"). 매 업데이트마다 앱을
+     * 지우고 다시 깔아야 하고, 그때마다 저장해 둔 인증키도 함께 사라진다.
+     *
+     * 키를 고정하면 모든 빌드가 같은 서명을 갖는다.
+     *
+     * 이 키는 디버그 전용이고 비밀번호도 공개된 관례값(android)이다. 배포용 서명에는
+     * 쓸 수 없으므로 저장소에 두어도 된다. 스토어 배포를 하게 되면 릴리스 키는 반드시
+     * 따로 만들고 Secrets 로만 다뤄야 한다.
+     */
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.aptprice.tracker"
         minSdk = 26
@@ -49,6 +72,7 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
