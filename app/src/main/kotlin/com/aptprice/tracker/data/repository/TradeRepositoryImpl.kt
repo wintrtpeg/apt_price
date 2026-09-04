@@ -56,6 +56,10 @@ class TradeRepositoryImpl(
     private val clock: Clock,
 ) : TradeRepository {
 
+    /** 접근 가능한 매매 서비스. 처음 성공한 쪽으로 고정된다. */
+    @Volatile
+    private var tradeApiVariant: TradeApiVariant? = null
+
     override fun observeDeals(
         period: TradePeriod,
         lawdCodes: List<String>,
@@ -229,16 +233,7 @@ class TradeRepositoryImpl(
         state: SyncState,
     ) {
         val pages = fetchAllPages(key) { pageNo ->
-            MolitParser.parseTrades(
-                api.getAptTrades(
-                    serviceKey = encodedKey,
-                    lawdCd = key.lawdCd,
-                    dealYmd = key.dealYmd,
-                    pageNo = pageNo,
-                    numOfRows = MolitApiService.PAGE_SIZE,
-                ),
-                key.lawdCd,
-            )
+            loadTradePage(key, encodedKey, pageNo)
         }
         val rows = pages.flatMap { it.items }
             .filter { RegionCatalog.storable(it.lawdCd, it.umdNm) }
@@ -271,6 +266,51 @@ class TradeRepositoryImpl(
 
         rentDao.replaceMonth(key.lawdCd, key.dealYmd, rows)
         recordSuccess(SyncEndpoint.RENT, key, pages, rows.size, state)
+    }
+
+    /**
+     * 매매 자료를 받아온다.
+     *
+     * 매매는 "상세 자료"와 "기본 자료" 두 서비스로 나뉘어 있고, 활용신청한 쪽에만
+     * 접근할 수 있다. 어느 쪽이 열려 있는지 미리 알 수 없으므로 되는 쪽을 찾아 쓴다.
+     * 한 번 성공한 쪽을 기억해 두어, 그다음부터는 곧바로 그쪽만 부른다.
+     */
+    private suspend fun loadTradePage(
+        key: TradeRequestKey,
+        encodedKey: String,
+        pageNo: Int,
+    ): MolitPage<AptTrade> {
+        val order = tradeApiVariant?.let { listOf(it) } ?: TradeApiVariant.entries
+        var lastError: Throwable? = null
+
+        order.forEach { variant ->
+            try {
+                val xml = when (variant) {
+                    TradeApiVariant.DETAIL -> api.getAptTradesDetail(
+                        serviceKey = encodedKey,
+                        lawdCd = key.lawdCd,
+                        dealYmd = key.dealYmd,
+                        pageNo = pageNo,
+                        numOfRows = MolitApiService.PAGE_SIZE,
+                    )
+                    TradeApiVariant.BASIC -> api.getAptTradesBasic(
+                        serviceKey = encodedKey,
+                        lawdCd = key.lawdCd,
+                        dealYmd = key.dealYmd,
+                        pageNo = pageNo,
+                        numOfRows = MolitApiService.PAGE_SIZE,
+                    )
+                }
+                val page = MolitParser.parseTrades(xml, key.lawdCd)
+                tradeApiVariant = variant
+                return page
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                lastError = e
+            }
+        }
+        throw lastError ?: IllegalStateException("매매 자료를 받아오지 못했습니다")
     }
 
     /** `totalCount` 를 보고 다음 페이지가 있으면 이어서 받는다. */
@@ -388,6 +428,9 @@ class TradeRepositoryImpl(
             abortedBy = abortError,
         )
     }
+
+    /** 어느 매매 서비스가 열려 있는지. 한 번 확인되면 그쪽만 쓴다. */
+    private enum class TradeApiVariant { DETAIL, BASIC }
 
     private companion object {
         /**

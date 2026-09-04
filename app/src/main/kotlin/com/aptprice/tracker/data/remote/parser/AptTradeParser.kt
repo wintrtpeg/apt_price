@@ -28,48 +28,48 @@ internal object AptTradeParser {
 
     fun parseRow(row: Element, fallbackLawdCd: String): Result<AptTrade> {
         // 시군구 코드: 응답에 있으면 그 값을, 없으면 요청에 쓴 코드를 쓴다.
-        val lawdCd = row.childText("sggCd")?.take(5) ?: fallbackLawdCd
+        val lawdCd = row.childText("sggCd", "지역코드")?.take(5) ?: fallbackLawdCd
 
-        val umdNm = row.childText("umdNm")
-            ?: return fail("법정동명(umdNm) 없음")
+        val umdNm = row.childText("umdNm", "법정동")
+            ?: return fail("법정동명(umdNm/법정동) 없음")
 
-        val aptName = row.childText("aptNm")
-            ?: return fail("단지명(aptNm) 없음")
+        val aptName = row.childText("aptNm", "아파트")
+            ?: return fail("단지명(aptNm/아파트) 없음")
 
-        val areaRaw = row.childText("excluUseAr")
+        val areaRaw = row.childText("excluUseAr", "전용면적")
         val area = AreaFormatter.parseAreaM2(areaRaw)
-            ?: return fail("전용면적(excluUseAr) 해석 불가: ${areaRaw ?: "없음"}")
+            ?: return fail("전용면적(excluUseAr/전용면적) 해석 불가: ${areaRaw ?: "없음"}")
 
         val dealDate = TradeDateWindow.parseDealDate(
-            year = row.childText("dealYear"),
-            month = row.childText("dealMonth"),
-            day = row.childText("dealDay"),
+            year = row.childText("dealYear", "년"),
+            month = row.childText("dealMonth", "월"),
+            day = row.childText("dealDay", "일"),
         ) ?: return fail("계약일(dealYear/dealMonth/dealDay) 해석 불가")
 
-        val amountRaw = row.childText("dealAmount")
+        val amountRaw = row.childText("dealAmount", "거래금액")
         val amount = MoneyFormatter.parseManwon(amountRaw)
-            ?: return fail("거래금액(dealAmount) 해석 불가: ${amountRaw ?: "없음"}")
+            ?: return fail("거래금액(dealAmount/거래금액) 해석 불가: ${amountRaw ?: "없음"}")
 
         // 해제여부(cdealType) 가 "O" 이면 계약 해제 건이다.
-        val cancelType = row.childText("cdealType")
+        val cancelType = row.childText("cdealType", "해제여부")
         val canceled = cancelType?.equals("O", ignoreCase = true) == true
-        val canceledDate = row.childText("cdealDay")?.let(::parseFlexibleDate)
+        val canceledDate = row.childText("cdealDay", "해제사유발생일")?.let(::parseFlexibleDate)
 
         return Result.success(
             AptTrade(
                 lawdCd = lawdCd,
                 umdNm = umdNm,
                 aptName = aptName,
-                jibun = row.childText("jibun"),
+                jibun = row.childText("jibun", "지번"),
                 exclusiveAreaM2 = area,
-                floor = row.childInt("floor"),
-                buildYear = row.childInt("buildYear"),
+                floor = row.childInt("floor", "층"),
+                buildYear = row.childInt("buildYear", "건축년도"),
                 dealDate = dealDate,
                 canceled = canceled,
                 canceledDate = canceledDate,
                 dealAmountManwon = amount,
-                dealingGbn = row.childText("dealingGbn"),
-                registerDate = row.childText("rgstDate"),
+                dealingGbn = row.childText("dealingGbn", "거래유형"),
+                registerDate = row.childText("rgstDate", "등기일자"),
             ),
         )
     }
