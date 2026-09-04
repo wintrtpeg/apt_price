@@ -21,6 +21,9 @@
     호출부가 반드시 다루게 만든다. "기본값으로 채우기" 오버로드는 의도적으로 없다.
   - 응답의 한 행을 읽지 못하면 그 행을 버리되 **사유와 건수를 남긴다**
     (`SyncReport.parseFailures`, `sync_state.failureCount`). 0 으로 채우지 않는다.
+  - 위 원칙이 나중에 깨지지 않도록 **테스트로 고정**했다. 운영 코드에 난수·샘플 데이터가
+    들어오거나 출처 표기가 빠지면 빌드가 실패한다.
+    → 자세한 내용과 미검증 항목은 [`docs/DATA_INTEGRITY.md`](docs/DATA_INTEGRITY.md)
 
 > **연동 전 확인 필요**: 응답 필드명(`aptNm`, `excluUseAr`, `dealAmount`, `deposit`,
 > `monthlyRent`, `cdealType` 등)은 공공데이터포털에 공개된 명세를 따랐으나, 개발 환경에서
@@ -219,4 +222,4 @@ Pretendard 를 `app/src/main/res/font` 에 직접 번들링한다 (Regular / Med
 - [x] **Step 2** — 공공데이터포털 API 클라이언트, 응답 파서, (지역 × 계약월) 단위 Room 캐시, 동기화 오케스트레이션
 - [x] **Step 3** — 메인 화면 (실거래 피드, 매매/전세/월세 탭, 기간 선택, 지역·평형대 필터, 정렬)
 - [x] **Step 4** — 상세 화면 (평형 선택 칩, 기간 전환 3개월~5년, 인터랙티브 시계열 라인 차트, 거래 이력)
-- [ ] **Step 5** — 무결성 검증 (Mock 데이터 배제 확인, 출처 라벨 표기 확인)
+- [x] **Step 5** — 무결성 검증 ([`docs/DATA_INTEGRITY.md`](docs/DATA_INTEGRITY.md))
