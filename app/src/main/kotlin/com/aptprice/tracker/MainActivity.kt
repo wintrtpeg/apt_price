@@ -15,7 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aptprice.tracker.core.attribution.DataSourceAttribution
-import com.aptprice.tracker.core.time.TradeDateWindow
+import com.aptprice.tracker.core.time.TradePeriod
+import com.aptprice.tracker.core.time.TradeQueryPlan
 import com.aptprice.tracker.domain.region.RegionCatalog
 import com.aptprice.tracker.ui.theme.AptPriceTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,7 +47,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun Step1Placeholder(modifier: Modifier = Modifier) {
     val today = LocalDate.now()
-    val window = TradeDateWindow.recent(today)
+    val defaultPlan = TradeQueryPlan.of(TradePeriod.DEFAULT, today, RegionCatalog.lawdCodes)
+    val maxPlan = TradeQueryPlan.of(TradePeriod.MAX, today, RegionCatalog.lawdCodes)
 
     Column(
         modifier = modifier.padding(20.dp),
@@ -65,8 +67,19 @@ private fun Step1Placeholder(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            "피드 구간: ${window.start} ~ ${window.endInclusive} " +
-                "(DEAL_YMD ${TradeDateWindow.dealYmdCodes(window).joinToString(", ")})",
+            "기본 구간(${TradePeriod.DEFAULT.label}): " +
+                "${defaultPlan.range.start} ~ ${defaultPlan.range.endInclusive} " +
+                "· 조회 ${defaultPlan.requestCount}회",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            "최대 구간(${TradePeriod.MAX.label}): " +
+                "${maxPlan.range.start} ~ ${maxPlan.range.endInclusive} " +
+                "· 조회 ${maxPlan.requestCount}회",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            "기간 선택지: " + TradePeriod.feedOptions.joinToString(" · ") { it.shortLabel },
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
