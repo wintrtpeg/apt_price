@@ -93,8 +93,20 @@ data class FeedUiState(
                 "국토교통부 응답 중 ${it}건을 읽지 못해 목록에서 제외했습니다. " +
                     "값을 임의로 채우지 않습니다."
             }
-            val partialNotice = report.failures.size.takeIf { it > 0 }?.let {
-                "${it}개 구간을 불러오지 못했습니다. 목록이 일부만 표시될 수 있습니다."
+            // 개수만 알려 주면 원인을 알 수 없다. 가장 많이 나온 사유를 함께 보여 준다.
+            val partialNotice = report.failures.takeIf { it.isNotEmpty() }?.let { failures ->
+                val (reason, count) = failures
+                    .groupingBy { it.message }
+                    .eachCount()
+                    .maxByOrNull { it.value }!!
+                val firstOfKind = failures.first { it.message == reason }.key
+                buildString {
+                    append("${failures.size}개 구간을 불러오지 못했습니다.")
+                    appendLine()
+                    append("사유(${count}건): $reason")
+                    appendLine()
+                    append("예: ${firstOfKind.lawdCd} / ${firstOfKind.dealYmd}")
+                }
             }
             return parseNotice to partialNotice
         }

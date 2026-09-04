@@ -72,13 +72,13 @@ class FeedFilterTest {
     @Test
     fun `평형대 필터를 토글할 수 있다`() {
         val filter = FeedFilter()
-        assertTrue("비어 있으면 전부 통과", filter.acceptsBucket(AreaBucket.LARGE))
+        assertTrue("비어 있으면 전부 통과", filter.acceptsBucket(AreaBucket.PYEONG_40))
 
-        val small = filter.toggleAreaBucket(AreaBucket.SMALL)
-        assertTrue(small.acceptsBucket(AreaBucket.SMALL))
-        assertFalse(small.acceptsBucket(AreaBucket.LARGE))
+        val small = filter.toggleAreaBucket(AreaBucket.PYEONG_20)
+        assertTrue(small.acceptsBucket(AreaBucket.PYEONG_20))
+        assertFalse(small.acceptsBucket(AreaBucket.PYEONG_40))
 
-        assertTrue("다시 끄면 제한이 사라진다", small.toggleAreaBucket(AreaBucket.SMALL).acceptsBucket(AreaBucket.LARGE))
+        assertTrue("다시 끄면 제한이 사라진다", small.toggleAreaBucket(AreaBucket.PYEONG_20).acceptsBucket(AreaBucket.PYEONG_40))
     }
 
     @Test

@@ -86,7 +86,7 @@ object FeedBuilder {
             complexAreaKey = complexAreaKey,
             aptName = aptName,
             regionLabel = listOfNotNull(region?.displayName, umdNm).joinToString(" "),
-            areaLabel = AreaFormatter.formatWithPyeong(exclusiveAreaM2),
+            areaLabel = AreaFormatter.formatWithBucket(exclusiveAreaM2),
             areaBucketLabel = areaBucket.label,
             floorLabel = floor?.let { "${it}층" },
             dateLabel = DateFormatter.formatFeedDate(dealDate),

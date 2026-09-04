@@ -48,20 +48,43 @@ class AreaFormatterTest {
     }
 
     @Test
-    fun `평형대는 60제곱미터와 국민주택규모 85제곱미터를 경계로 나뉜다`() {
-        assertEquals(AreaBucket.SMALL, AreaFormatter.bucketOf(39.99))
-        assertEquals(AreaBucket.SMALL, AreaFormatter.bucketOf(59.99))
-        assertEquals(AreaBucket.MEDIUM, AreaFormatter.bucketOf(60.0))
-        assertEquals(AreaBucket.MEDIUM, AreaFormatter.bucketOf(84.97))
-        assertEquals(AreaBucket.MEDIUM, AreaFormatter.bucketOf(85.0))
-        assertEquals(AreaBucket.LARGE, AreaFormatter.bucketOf(85.01))
-        assertEquals(AreaBucket.LARGE, AreaFormatter.bucketOf(134.98))
+    fun `시장에서 부르는 평형대로 나뉜다`() {
+        // 사람들이 말하는 30평대는 공급면적 기준 호칭이다. 국토부 자료에는 전용면적만
+        // 있으므로, 각 호칭에 해당하는 전용면적 구간을 잡았다.
+        assertEquals(AreaBucket.UNDER_20, AreaFormatter.bucketOf(39.72))
+        assertEquals(AreaBucket.UNDER_20, AreaFormatter.bucketOf(49.99))
+        assertEquals("전용 59㎡ 는 20평대", AreaBucket.PYEONG_20, AreaFormatter.bucketOf(59.99))
+        assertEquals("전용 84㎡ 는 30평대(국민평형)", AreaBucket.PYEONG_30, AreaFormatter.bucketOf(84.97))
+        assertEquals("전용 114㎡ 는 40평대", AreaBucket.PYEONG_40, AreaFormatter.bucketOf(114.20))
+        assertEquals(AreaBucket.OVER_50, AreaFormatter.bucketOf(134.88))
+        assertEquals(AreaBucket.OVER_50, AreaFormatter.bucketOf(200.0))
     }
 
     @Test
-    fun `평형대 라벨은 소형 중형 대형이다`() {
-        assertEquals("소형", AreaBucket.SMALL.label)
-        assertEquals("중형", AreaBucket.MEDIUM.label)
-        assertEquals("대형", AreaBucket.LARGE.label)
+    fun `구간 경계가 겹치거나 비지 않는다`() {
+        assertEquals(AreaBucket.UNDER_20, AreaFormatter.bucketOf(49.99))
+        assertEquals(AreaBucket.PYEONG_20, AreaFormatter.bucketOf(50.0))
+        assertEquals(AreaBucket.PYEONG_20, AreaFormatter.bucketOf(65.99))
+        assertEquals(AreaBucket.PYEONG_30, AreaFormatter.bucketOf(66.0))
+        assertEquals(AreaBucket.PYEONG_30, AreaFormatter.bucketOf(98.99))
+        assertEquals(AreaBucket.PYEONG_40, AreaFormatter.bucketOf(99.0))
+        assertEquals(AreaBucket.PYEONG_40, AreaFormatter.bucketOf(131.99))
+        assertEquals(AreaBucket.OVER_50, AreaFormatter.bucketOf(132.0))
+    }
+
+    @Test
+    fun `평형대 라벨은 실제 평수 호칭이다`() {
+        assertEquals("10평대 이하", AreaBucket.UNDER_20.label)
+        assertEquals("20평대", AreaBucket.PYEONG_20.label)
+        assertEquals("30평대", AreaBucket.PYEONG_30.label)
+        assertEquals("40평대", AreaBucket.PYEONG_40.label)
+        assertEquals("50평대 이상", AreaBucket.OVER_50.label)
+    }
+
+    @Test
+    fun `화면 표기는 전용면적과 평형대를 함께 보여 준다`() {
+        assertEquals("84.97㎡ · 30평대", AreaFormatter.formatWithBucket(84.97))
+        assertEquals("59.99㎡ · 20평대", AreaFormatter.formatWithBucket(59.99))
+        assertEquals("114.2㎡ · 40평대", AreaFormatter.formatWithBucket(114.20))
     }
 }
