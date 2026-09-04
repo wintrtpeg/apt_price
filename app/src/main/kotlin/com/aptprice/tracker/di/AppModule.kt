@@ -1,14 +1,20 @@
 package com.aptprice.tracker.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import com.aptprice.tracker.BuildConfig
 import com.aptprice.tracker.data.local.AptPriceDatabase
+import com.aptprice.tracker.data.local.DataStoreServiceKeyStore
 import com.aptprice.tracker.data.local.dao.RentDao
 import com.aptprice.tracker.data.local.dao.SyncStateDao
 import com.aptprice.tracker.data.local.dao.TradeDao
 import com.aptprice.tracker.data.remote.api.MolitApiService
 import com.aptprice.tracker.data.remote.api.ServiceKeyProvider
+import com.aptprice.tracker.data.remote.api.ServiceKeyStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -43,8 +49,25 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideServiceKeyProvider(): ServiceKeyProvider =
-        ServiceKeyProvider(BuildConfig.MOLIT_SERVICE_KEY)
+    fun providePreferencesDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = PreferenceDataStoreFactory.create {
+        context.preferencesDataStoreFile(PREFERENCES_NAME)
+    }
+
+    @Provides
+    @Singleton
+    fun provideServiceKeyStore(dataStore: DataStore<Preferences>): ServiceKeyStore =
+        DataStoreServiceKeyStore(dataStore)
+
+    /**
+     * 인증키는 앱에서 입력한 값을 먼저 쓰고, 없으면 빌드 시 주입된 값으로 넘어간다.
+     * 덕분에 APK 에 키를 넣지 않고도 배포할 수 있다.
+     */
+    @Provides
+    @Singleton
+    fun provideServiceKeyProvider(store: ServiceKeyStore): ServiceKeyProvider =
+        ServiceKeyProvider(store, BuildConfig.MOLIT_SERVICE_KEY)
 
     @Provides
     @Singleton
@@ -89,4 +112,6 @@ object AppModule {
 
     @Provides
     fun provideSyncStateDao(db: AptPriceDatabase): SyncStateDao = db.syncStateDao()
+
+    private const val PREFERENCES_NAME = "apt_price_settings"
 }

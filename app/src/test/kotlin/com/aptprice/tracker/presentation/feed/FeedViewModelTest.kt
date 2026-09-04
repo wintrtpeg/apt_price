@@ -4,6 +4,8 @@ import com.aptprice.tracker.core.format.AreaBucket
 import com.aptprice.tracker.core.time.TradePeriod
 import com.aptprice.tracker.core.time.TradeRequestKey
 import com.aptprice.tracker.data.remote.parser.MolitApiError
+import com.aptprice.tracker.data.remote.api.ServiceKeyProvider
+import com.aptprice.tracker.data.repository.FakeServiceKeyStore
 import com.aptprice.tracker.domain.model.AptRent
 import com.aptprice.tracker.domain.model.AptTrade
 import com.aptprice.tracker.domain.model.DealTab
@@ -49,7 +51,10 @@ class FeedViewModelTest {
         previousDepositManwon = null, previousMonthlyRentManwon = null,
     )
 
-    private fun viewModel(repository: FakeTradeRepository) = FeedViewModel(repository, clock)
+    private fun viewModel(
+        repository: FakeTradeRepository,
+        keyStore: FakeServiceKeyStore = FakeServiceKeyStore("TEST_KEY"),
+    ) = FeedViewModel(repository, ServiceKeyProvider(keyStore, buildConfigKey = ""), clock)
 
     @Test
     fun `시작하면 기본 조건으로 조회한다`() = runTest {
@@ -241,6 +246,51 @@ class FeedViewModelTest {
         val content = vm.uiState.value.content
         assertTrue("빈 목록을 지어낸 값으로 채우지 않는다", content is FeedContent.Empty)
         assertTrue((content as FeedContent.Empty).message.contains("거래 데이터 없음"))
+    }
+
+    @Test
+    fun `인증키가 없으면 조회하지 않고 설정으로 안내한다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.report = repo.report.copy(
+            abortedBy = MolitApiError(
+                code = "NO_KEY",
+                message = "인증키 없음",
+                kind = MolitApiError.Kind.INVALID_SERVICE_KEY,
+            ),
+        )
+        val vm = viewModel(repo, keyStore = FakeServiceKeyStore(""))
+
+        val content = vm.uiState.value.content as FeedContent.Error
+        assertTrue("다시 시도가 아니라 설정으로 보내야 한다", content.needsServiceKey)
+        assertFalse(content.retryable)
+    }
+
+    @Test
+    fun `설정에서 키를 넣으면 자동으로 조회를 시작한다`() = runTest {
+        val repo = FakeTradeRepository()
+        val store = FakeServiceKeyStore("")
+        val vm = viewModel(repo, keyStore = store)
+        val before = repo.syncedPlans.size
+
+        // 설정 화면에서 키를 저장한 상황
+        store.save("NEW_KEY_1234567890")
+
+        assertEquals("키가 생기면 사용자가 새로고침하지 않아도 조회한다", before + 1, repo.syncedPlans.size)
+        assertNotNull(vm.uiState.value)
+    }
+
+    @Test
+    fun `이미 키가 있으면 중복으로 조회하지 않는다`() = runTest {
+        val repo = FakeTradeRepository()
+        val store = FakeServiceKeyStore("EXISTING_KEY_123456")
+        val vm = viewModel(repo, keyStore = store)
+        val before = repo.syncedPlans.size
+
+        // 같은 값으로 다시 저장해도 상태가 바뀌지 않으므로 재조회하지 않는다.
+        store.save("EXISTING_KEY_123456")
+
+        assertEquals(before, repo.syncedPlans.size)
+        assertNotNull(vm.uiState.value)
     }
 
     @Test

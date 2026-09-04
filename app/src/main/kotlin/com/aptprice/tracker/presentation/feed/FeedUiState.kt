@@ -24,7 +24,12 @@ sealed interface FeedContent {
     data class Empty(val message: String) : FeedContent
 
     /** 조회 자체가 실패했다. 원인을 그대로 보여준다. */
-    data class Error(val message: String, val retryable: Boolean) : FeedContent
+    data class Error(
+        val message: String,
+        val retryable: Boolean,
+        /** 인증키 문제인가. 다시 시도가 아니라 설정 화면으로 안내해야 한다. */
+        val needsServiceKey: Boolean = false,
+    ) : FeedContent
 }
 
 /**

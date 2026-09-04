@@ -13,7 +13,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -57,6 +61,7 @@ import java.time.ZoneId
 @Composable
 fun FeedScreen(
     onDealClick: (complexAreaKey: String) -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel(),
 ) {
@@ -76,6 +81,11 @@ fun FeedScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Filled.Settings, contentDescription = "인증키 설정")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -142,6 +152,7 @@ fun FeedScreen(
                     onDealClick = onDealClick,
                     onRetry = viewModel::refresh,
                     onDismissNotices = viewModel::dismissNotices,
+                    onSettingsClick = onSettingsClick,
                 )
             }
         }
@@ -180,6 +191,7 @@ private fun FeedList(
     onDealClick: (String) -> Unit,
     onRetry: () -> Unit,
     onDismissNotices: () -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     val cardSourceLabel = remember(state.lastFetchedAt) { state.compactSourceLabel() }
 
@@ -213,6 +225,8 @@ private fun FeedList(
                     message = content.message,
                     retryable = content.retryable,
                     onRetry = onRetry,
+                    // 인증키 문제라면 다시 시도해 봐야 소용없다. 설정으로 보낸다.
+                    onOpenSettings = onSettingsClick.takeIf { content.needsServiceKey },
                 )
             }
         }
