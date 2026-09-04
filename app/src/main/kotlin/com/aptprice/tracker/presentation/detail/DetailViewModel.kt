@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -85,6 +86,15 @@ class DetailViewModel @Inject constructor(
                 val (key, period) = context
                 render(key, period, trades, jeonse, areas)
             }
+            .catch { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        emptyMessage = "단지 정보를 표시하지 못했습니다: " +
+                            (error.message ?: error::class.simpleName.orEmpty()),
+                    )
+                }
+            }
             .launchIn(viewModelScope)
     }
 
@@ -143,7 +153,7 @@ class DetailViewModel @Inject constructor(
                 _uiState.update { it.copy(lastFetchedAt = repository.lastFetchedAt()) }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 // 상세 조회가 실패해도 앱이 죽지 않게 한다. 캐시에 있는 것만 보여준다.
                 _uiState.update {
                     it.copy(

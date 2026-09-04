@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -39,6 +40,8 @@ class SettingsViewModel @Inject constructor(
     init {
         serviceKey.isConfigured
             .onEach { configured -> _uiState.update { it.copy(isConfigured = configured) } }
+            // 저장소를 읽지 못해도 앱이 죽지 않게 한다.
+            .catch { _ -> _uiState.update { it.copy(isConfigured = false) } }
             .launchIn(viewModelScope)
     }
 
@@ -61,7 +64,14 @@ class SettingsViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            serviceKey.save(value)
+            try {
+                serviceKey.save(value)
+            } catch (e: Throwable) {
+                _uiState.update {
+                    it.copy(savedMessage = "저장하지 못했습니다: ${e.message ?: e::class.simpleName}")
+                }
+                return@launch
+            }
             _uiState.update {
                 it.copy(
                     input = "",

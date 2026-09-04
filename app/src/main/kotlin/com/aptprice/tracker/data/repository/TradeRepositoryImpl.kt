@@ -209,8 +209,10 @@ class TradeRepositoryImpl(
         } catch (e: CancellationException) {
             // 취소는 정상 흐름이므로 그대로 올려보낸다. 삼키면 코루틴 취소가 깨진다.
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             // 구간 하나가 실패했다고 앱이 죽어서는 안 된다.
+            // Exception 이 아니라 Throwable 로 잡는다. OutOfMemoryError 같은 Error 는
+            // Exception 이 아니어서 Exception 만 잡으면 그대로 앱을 종료시킨다.
             // Retrofit 의 HttpException(non-2xx) 은 IOException 이 아니라서 위에서 걸리지 않는다.
             // 여기서 막지 않으면 async 밖으로 나가 viewModelScope 의 미처리 예외가 되고,
             // 그대로 앱이 종료된다.
