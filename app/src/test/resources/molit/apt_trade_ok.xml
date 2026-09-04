@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력. 실제 실거래 데이터가 아님. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptNm>파싱테스트아파트</aptNm>
+        <buildYear>2005</buildYear>
+        <dealAmount>    87,500</dealAmount>
+        <dealDay>3</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <excluUseAr>84.97</excluUseAr>
+        <floor>10</floor>
+        <jibun>101</jibun>
+        <rgstDate>26.09.15</rgstDate>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+      <item>
+        <aptNm>파싱테스트아파트</aptNm>
+        <buildYear>2005</buildYear>
+        <dealAmount>120,000</dealAmount>
+        <dealDay>1</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <cdealType>O</cdealType>
+        <cdealDay>26.09.20</cdealDay>
+        <excluUseAr>114.20</excluUseAr>
+        <floor>15</floor>
+        <jibun>101</jibun>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+    </items>
+    <numOfRows>1000</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>2</totalCount>
+  </body>
+</response>

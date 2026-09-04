@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력: 전체 건수가 페이지 크기보다 커서 다음 페이지가 남은 응답. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptNm>페이지테스트아파트</aptNm>
+        <dealAmount>30,000</dealAmount>
+        <dealDay>1</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <excluUseAr>39.72</excluUseAr>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+    </items>
+    <numOfRows>1</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>3</totalCount>
+  </body>
+</response>

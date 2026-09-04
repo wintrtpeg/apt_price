@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력: 공공데이터포털 게이트웨이가 인증키를 거부한 응답. -->
+<OpenAPI_ServiceResponse>
+  <cmmMsgHeader>
+    <errMsg>SERVICE ERROR</errMsg>
+    <returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg>
+    <returnReasonCode>30</returnReasonCode>
+  </cmmMsgHeader>
+</OpenAPI_ServiceResponse>

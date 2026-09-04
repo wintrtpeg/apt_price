@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력: 해당 달에 신고된 거래가 없는 응답. -->
+<response>
+  <header>
+    <resultCode>03</resultCode>
+    <resultMsg>NODATA_ERROR</resultMsg>
+  </header>
+  <body>
+    <items/>
+    <numOfRows>10</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>0</totalCount>
+  </body>
+</response>

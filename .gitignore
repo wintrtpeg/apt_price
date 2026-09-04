@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.cxx/
+release/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Keys / secrets — 공공데이터포털 serviceKey 는 절대 커밋 금지
+keystore.properties
+*.jks
+*.keystore
+secrets.properties

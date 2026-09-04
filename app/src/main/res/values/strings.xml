@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">실거래트래커</string>
+
+    <!-- 탭 -->
+    <string name="tab_trade">매매</string>
+    <string name="tab_jeonse">전세</string>
+    <string name="tab_monthly">월세</string>
+
+    <!-- 데이터 무결성 / 출처 -->
+    <string name="data_source_provider">국토교통부 실거래가 공개시스템</string>
+    <string name="data_source_label">데이터 출처: %1$s (기준일시: %2$s)</string>
+    <string name="data_source_not_synced">데이터 출처: 국토교통부 실거래가 공개시스템 (아직 동기화되지 않음)</string>
+    <string name="state_empty">거래 데이터 없음</string>
+    <string name="state_not_reported">국토교통부 미신고 건</string>
+    <string name="state_unavailable">실거래가 정보를 불러오지 못했습니다</string>
+    <string name="state_missing_service_key">공공데이터포털 인증키가 설정되지 않아 실거래가를 조회할 수 없습니다</string>
+    <string name="badge_canceled">계약 해제</string>
+    <string name="notice_reporting_delay">실거래 신고 기한은 계약일로부터 30일이므로, 최근 계약 건은 아직 반영되지 않았을 수 있습니다.</string>
+
+    <!-- 평형대 필터 -->
+    <string name="area_bucket_small">소형</string>
+    <string name="area_bucket_medium">중형</string>
+    <string name="area_bucket_large">대형</string>
+</resources>

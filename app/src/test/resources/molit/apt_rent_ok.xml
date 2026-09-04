@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력. 실제 실거래 데이터가 아님. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptNm>전세테스트아파트</aptNm>
+        <buildYear>2018</buildYear>
+        <contractTerm>25.09~27.09</contractTerm>
+        <contractType>신규</contractType>
+        <dealDay>3</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <deposit>50,000</deposit>
+        <excluUseAr>84.97</excluUseAr>
+        <floor>7</floor>
+        <jibun>200</jibun>
+        <monthlyRent>0</monthlyRent>
+        <sggCd>41135</sggCd>
+        <umdNm>정자동</umdNm>
+      </item>
+      <item>
+        <aptNm>월세테스트아파트</aptNm>
+        <contractTerm>25.09~27.09</contractTerm>
+        <contractType>갱신</contractType>
+        <dealDay>4</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <deposit>10,000</deposit>
+        <excluUseAr>59.99</excluUseAr>
+        <floor>5</floor>
+        <monthlyRent>120</monthlyRent>
+        <preDeposit>8,000</preDeposit>
+        <preMonthlyRent>100</preMonthlyRent>
+        <sggCd>41135</sggCd>
+        <umdNm>정자동</umdNm>
+      </item>
+      <item>
+        <!-- 월세 태그가 아예 없는 전세 건 -->
+        <aptNm>월세태그없는아파트</aptNm>
+        <dealDay>5</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <deposit>45,000</deposit>
+        <excluUseAr>84.97</excluUseAr>
+        <sggCd>41135</sggCd>
+        <umdNm>정자동</umdNm>
+      </item>
+    </items>
+    <numOfRows>1000</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>3</totalCount>
+  </body>
+</response>
