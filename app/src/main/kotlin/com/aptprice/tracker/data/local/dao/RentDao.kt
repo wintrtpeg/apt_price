@@ -59,6 +59,16 @@ interface RentDao {
         toEpochDay: Long,
     ): Flow<List<RentEntity>>
 
+    /** 단지 안에 존재하는 평형 목록 (전세만 있는 평형도 칩에 나오도록). */
+    @Query(
+        """
+        SELECT DISTINCT exclusiveAreaM2 FROM apt_rent
+        WHERE complexKey = :complexKey
+        ORDER BY exclusiveAreaM2 ASC
+        """,
+    )
+    fun observeAreasOfComplex(complexKey: String): Flow<List<Double>>
+
     @Query("SELECT COUNT(*) FROM apt_rent")
     suspend fun count(): Int
 

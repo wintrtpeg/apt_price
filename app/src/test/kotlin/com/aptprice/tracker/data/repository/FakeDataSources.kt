@@ -140,6 +140,10 @@ class FakeRentDao : RentDao {
         }.sortedBy { it.dealDateEpochDay }
     }
 
+    override fun observeAreasOfComplex(complexKey: String): Flow<List<Double>> = version.map {
+        rows.filter { it.complexKey == complexKey }.map { it.exclusiveAreaM2 }.distinct().sorted()
+    }
+
     override suspend fun count(): Int = rows.size
 
     override suspend fun clear() {

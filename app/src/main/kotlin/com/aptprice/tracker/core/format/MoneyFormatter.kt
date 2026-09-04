@@ -106,7 +106,7 @@ object MoneyFormatter {
             rounded > 0 -> "+"
             else -> ""
         }
-        return "$sign${"%.1f".format(rounded)}%"
+        return "$sign${String.format(java.util.Locale.US, "%.1f", rounded)}%"
     }
 
     private fun withComma(value: Long): String {

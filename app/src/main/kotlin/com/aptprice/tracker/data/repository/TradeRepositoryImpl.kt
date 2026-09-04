@@ -32,6 +32,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -100,8 +101,14 @@ class TradeRepositoryImpl(
             .map { rows -> rows.map { it.toDomain() }.filterVisible() }
     }
 
+    /** 매매·전월세 양쪽에 있는 평형을 합쳐서 돌려준다. 전세만 있는 평형도 칩에 나와야 한다. */
     override fun observeAreasOfComplex(complexKey: String): Flow<List<Double>> =
-        tradeDao.observeAreasOfComplex(complexKey)
+        combine(
+            tradeDao.observeAreasOfComplex(complexKey),
+            rentDao.observeAreasOfComplex(complexKey),
+        ) { fromTrades, fromRents ->
+            (fromTrades + fromRents).distinct().sorted()
+        }
 
     override suspend fun lastFetchedAt(): Instant? = withContext(ioDispatcher) {
         syncStateDao.latestFetchedAt()?.let(Instant::ofEpochMilli)

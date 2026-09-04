@@ -53,7 +53,7 @@ object AreaFormatter {
     fun bucketOf(areaM2: Double): AreaBucket = AreaBucket.of(areaM2)
 
     private fun trimDecimals(value: Double, decimals: Int): String {
-        val text = "%.${decimals}f".format(value)
+        val text = String.format(java.util.Locale.US, "%.${decimals}f", value)
         return if (text.contains('.')) text.trimEnd('0').trimEnd('.') else text
     }
 }

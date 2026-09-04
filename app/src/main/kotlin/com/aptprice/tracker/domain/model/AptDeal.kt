@@ -58,11 +58,11 @@ sealed interface AptDeal {
      * 전용면적은 소수점 둘째 자리까지만 써서 같은 타입이 갈라지지 않게 한다.
      */
     val complexAreaKey: String
-        get() = "$lawdCd|$umdNm|$aptName|${"%.2f".format(exclusiveAreaM2)}"
+        get() = ComplexAreaKey.of(lawdCd, umdNm, aptName, exclusiveAreaM2).raw
 
     /** 단지 단위 키 (평형 무관) */
     val complexKey: String
-        get() = "$lawdCd|$umdNm|$aptName"
+        get() = "$lawdCd${ComplexAreaKey.SEPARATOR}$umdNm${ComplexAreaKey.SEPARATOR}$aptName"
 }
 
 /** 아파트 매매 실거래 (getRTMSDataSvcAptTradeDev) */
