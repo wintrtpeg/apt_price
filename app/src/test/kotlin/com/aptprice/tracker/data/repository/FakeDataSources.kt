@@ -7,6 +7,7 @@ import com.aptprice.tracker.data.local.entity.RentEntity
 import com.aptprice.tracker.data.local.entity.SyncStateEntity
 import com.aptprice.tracker.data.local.entity.TradeEntity
 import com.aptprice.tracker.data.remote.api.MolitApiService
+import com.aptprice.tracker.data.remote.api.ServiceKeyStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -174,4 +175,22 @@ class FakeSyncStateDao : SyncStateDao {
         states.values.filter { it.failureCount > 0 }
 
     override suspend fun clear() = states.clear()
+}
+
+/** 메모리에만 두는 인증키 저장소. */
+class FakeServiceKeyStore(initial: String = "") : ServiceKeyStore {
+    private val state = MutableStateFlow(initial)
+    override val keyFlow: Flow<String> = state
+
+    var saveCount: Int = 0
+        private set
+
+    override suspend fun save(key: String) {
+        state.value = key
+        saveCount++
+    }
+
+    override suspend fun clear() {
+        state.value = ""
+    }
 }

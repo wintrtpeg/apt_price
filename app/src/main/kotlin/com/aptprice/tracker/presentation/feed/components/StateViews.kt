@@ -119,6 +119,8 @@ fun ErrorStateView(
     retryable: Boolean,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 인증키 문제일 때만 설정으로 가는 버튼을 띄운다. */
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -133,8 +135,10 @@ fun ErrorStateView(
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
         )
-        if (retryable) {
-            Button(onClick = onRetry) { Text("다시 시도") }
+        when {
+            // 인증키가 문제면 다시 시도해 봐야 같은 결과다.
+            onOpenSettings != null -> Button(onClick = onOpenSettings) { Text("인증키 설정하기") }
+            retryable -> Button(onClick = onRetry) { Text("다시 시도") }
         }
     }
 }

@@ -60,14 +60,20 @@
 
 ### 2. 키 설정
 
+두 가지 방법이 있고, **앱에 입력한 키가 우선**한다.
+
+**(a) 앱에서 입력** — PC 없이 폰만으로 쓸 때
+앱을 열고 우측 상단 톱니바퀴 → 인증키를 붙여넣는다. 기기에만 저장되며 외부로 나가지 않는다.
+
+**(b) 빌드 시 주입** — PC 에서 개발할 때
 ```bash
 cp local.properties.example local.properties
-# local.properties 를 열어 MOLIT_SERVICE_KEY 와 sdk.dir 를 채운다
+# sdk.dir 와 MOLIT_SERVICE_KEY 를 채운다
 ```
-
 `local.properties` 는 `.gitignore` 대상이다. **인증키를 커밋하지 말 것.**
-키는 `BuildConfig.MOLIT_SERVICE_KEY` 로 주입되며, 키가 없으면 앱은 조회를 시도하지 않고
-"인증키 미설정" 상태를 그대로 보여준다 (더미 데이터로 대체하지 않는다).
+
+키가 없으면 앱은 조회를 시도하지 않고 "인증키 미설정" 상태를 그대로 보여준다
+(더미 데이터로 대체하지 않는다).
 
 ### 3. 빌드
 
@@ -75,6 +81,18 @@ cp local.properties.example local.properties
 ./gradlew :app:assembleDebug     # APK 빌드
 ./gradlew :app:testDebugUnitTest # 단위 테스트
 ```
+
+### PC 없이 폰에만 설치하기
+
+GitHub Actions 가 `main` 에 push 될 때마다 테스트를 돌리고 APK 를 빌드해
+[Releases](../../releases/latest) 의 `latest` 에 올린다.
+
+1. 폰 브라우저로 Releases 에서 `apt-price-debug.apk` 를 내려받는다
+2. 파일을 탭해 설치한다 ("출처를 알 수 없는 앱" 허용 필요)
+3. 앱 → 우측 상단 톱니바퀴 → 인증키 입력
+
+**이 APK 에는 인증키가 들어 있지 않다.** 각자 발급받은 키를 앱에 입력하는 방식이라,
+공개된 APK 를 통해 키가 유출되지 않는다.
 
 ---
 

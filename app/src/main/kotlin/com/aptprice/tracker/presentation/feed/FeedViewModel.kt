@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.aptprice.tracker.core.format.AreaBucket
 import com.aptprice.tracker.core.time.TradePeriod
 import com.aptprice.tracker.core.time.TradeQueryPlan
+import com.aptprice.tracker.data.remote.api.ServiceKeyProvider
+import com.aptprice.tracker.data.remote.parser.MolitApiError
 import com.aptprice.tracker.domain.model.DealTab
 import com.aptprice.tracker.domain.region.RegionGroup
 import com.aptprice.tracker.domain.repository.TradeRepository
@@ -27,6 +29,7 @@ import javax.inject.Inject
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val repository: TradeRepository,
+    private val serviceKey: ServiceKeyProvider,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -38,7 +41,23 @@ class FeedViewModel @Inject constructor(
 
     init {
         observeDeals()
+        observeServiceKey()
         requestSync(force = false)
+    }
+
+    /**
+     * 설정 화면에서 인증키를 넣고 돌아오면 곧바로 조회를 시작한다.
+     * 키가 없던 상태에서 생긴 경우에만 반응한다.
+     */
+    private fun observeServiceKey() {
+        var wasConfigured: Boolean? = null
+        serviceKey.isConfigured
+            .onEach { configured ->
+                val previous = wasConfigured
+                wasConfigured = configured
+                if (previous == false && configured) requestSync(force = false)
+            }
+            .launchIn(viewModelScope)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -171,6 +190,8 @@ class FeedViewModel @Inject constructor(
                         report.abortedBy != null -> FeedContent.Error(
                             message = report.abortedBy.userMessage(),
                             retryable = report.abortedBy.isRetriable,
+                            needsServiceKey =
+                                report.abortedBy.kind == MolitApiError.Kind.INVALID_SERVICE_KEY,
                         )
                         else -> FeedContent.Empty(FeedUiState.emptyMessage(state.filter))
                     },

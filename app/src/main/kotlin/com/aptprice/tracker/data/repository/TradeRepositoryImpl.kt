@@ -118,7 +118,8 @@ class TradeRepositoryImpl(
         plan: TradeQueryPlan,
         onProgress: (SyncProgress) -> Unit,
     ): SyncReport = withContext(ioDispatcher) {
-        if (!serviceKey.isConfigured) {
+        val encodedKey = serviceKey.encodedKey()
+        if (encodedKey == null) {
             return@withContext SyncReport.notConfigured(
                 planned = plan.requestCount * SyncEndpoint.entries.size,
                 error = MolitApiError(
@@ -174,7 +175,7 @@ class TradeRepositoryImpl(
                     if (state.abortError() != null) return@async
                     semaphore.withPermit {
                         if (state.abortError() != null) return@withPermit
-                        runOne(endpoint, key, state)
+                        runOne(endpoint, key, encodedKey, state)
                     }
                     report(key)
                 }
@@ -185,11 +186,16 @@ class TradeRepositoryImpl(
     }
 
     /** 구간 하나를 받아 저장한다. 실패는 [SyncState] 에 기록만 하고 던지지 않는다. */
-    private suspend fun runOne(endpoint: SyncEndpoint, key: TradeRequestKey, state: SyncState) {
+    private suspend fun runOne(
+        endpoint: SyncEndpoint,
+        key: TradeRequestKey,
+        encodedKey: String,
+        state: SyncState,
+    ) {
         try {
             when (endpoint) {
-                SyncEndpoint.TRADE -> syncTradeMonth(key, state)
-                SyncEndpoint.RENT -> syncRentMonth(key, state)
+                SyncEndpoint.TRADE -> syncTradeMonth(key, encodedKey, state)
+                SyncEndpoint.RENT -> syncRentMonth(key, encodedKey, state)
             }
         } catch (e: MolitApiException) {
             if (!e.error.isRetriable) {
@@ -202,11 +208,15 @@ class TradeRepositoryImpl(
         }
     }
 
-    private suspend fun syncTradeMonth(key: TradeRequestKey, state: SyncState) {
+    private suspend fun syncTradeMonth(
+        key: TradeRequestKey,
+        encodedKey: String,
+        state: SyncState,
+    ) {
         val pages = fetchAllPages(key) { pageNo ->
             MolitParser.parseTrades(
                 api.getAptTrades(
-                    serviceKey = serviceKey.encodedKey,
+                    serviceKey = encodedKey,
                     lawdCd = key.lawdCd,
                     dealYmd = key.dealYmd,
                     pageNo = pageNo,
@@ -223,11 +233,15 @@ class TradeRepositoryImpl(
         recordSuccess(SyncEndpoint.TRADE, key, pages, rows.size, state)
     }
 
-    private suspend fun syncRentMonth(key: TradeRequestKey, state: SyncState) {
+    private suspend fun syncRentMonth(
+        key: TradeRequestKey,
+        encodedKey: String,
+        state: SyncState,
+    ) {
         val pages = fetchAllPages(key) { pageNo ->
             MolitParser.parseRents(
                 api.getAptRents(
-                    serviceKey = serviceKey.encodedKey,
+                    serviceKey = encodedKey,
                     lawdCd = key.lawdCd,
                     dealYmd = key.dealYmd,
                     pageNo = pageNo,

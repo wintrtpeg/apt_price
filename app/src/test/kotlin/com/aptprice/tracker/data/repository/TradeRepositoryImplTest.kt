@@ -63,7 +63,7 @@ class TradeRepositoryImplTest {
         key: String = "TEST_KEY",
     ) = TradeRepositoryImpl(
         api = api,
-        serviceKey = ServiceKeyProvider(key),
+        serviceKey = ServiceKeyProvider(FakeServiceKeyStore(key), buildConfigKey = ""),
         tradeDao = tradeDao,
         rentDao = rentDao,
         syncStateDao = syncStateDao,
