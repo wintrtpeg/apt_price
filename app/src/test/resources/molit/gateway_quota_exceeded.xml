@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력: 일일 트래픽 한도 초과 응답. -->
+<OpenAPI_ServiceResponse>
+  <cmmMsgHeader>
+    <errMsg>SERVICE ERROR</errMsg>
+    <returnAuthMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</returnAuthMsg>
+    <returnReasonCode>22</returnReasonCode>
+  </cmmMsgHeader>
+</OpenAPI_ServiceResponse>

@@ -85,6 +85,11 @@ android {
     }
 }
 
+ksp {
+    // Room 스키마를 파일로 뽑아 둔다. 나중에 마이그레이션을 쓸 때 기준이 된다.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
@@ -114,10 +119,6 @@ dependencies {
     implementation(libs.retrofit.converter.scalars)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
-    implementation(libs.tikxml)
-    implementation(libs.tikxml.annotation)
-    implementation(libs.tikxml.retrofit.converter)
-    ksp(libs.tikxml.processor)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

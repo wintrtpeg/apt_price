@@ -71,6 +71,8 @@ object RegionCatalog {
         displayName = "동탄",
         group = RegionGroup.DONGTAN,
         umdWhitelist = DongtanUmd.DEFAULT,
+        // 확장 목록까지 저장해 두면 대상 동을 넓히는 설정이 생겨도 재조회가 필요 없다.
+        storageUmdWhitelist = DongtanUmd.EXTENDED,
     )
 
     /** 전체 조회 대상 지역 (서울 25 + 성남 3 + 용인 3 + 수원 4 + 화성 1 = 36). */
@@ -91,6 +93,13 @@ object RegionCatalog {
      */
     fun accepts(lawdCd: String, umdNm: String?): Boolean =
         byCode[lawdCd]?.includesUmd(umdNm) ?: false
+
+    /**
+     * 이 행을 캐시에 저장해도 되는지 판정한다.
+     * 알 수 없는 LAWD_CD 는 대상 지역이 아니므로 저장하지 않는다.
+     */
+    fun storable(lawdCd: String, umdNm: String?): Boolean =
+        byCode[lawdCd]?.storesUmd(umdNm) ?: false
 
     private fun seoul(lawdCd: String, gu: String) = Region(
         lawdCd = lawdCd,

@@ -19,6 +19,14 @@
     `TradeDateWindow.parseDealDate`)는 실패 시 `null` 을 반환하고 기본값을 채우지 않는다.
   - `TradeValue<T>` 는 `Reported` / `Missing` 두 갈래뿐이라, 값이 없는 경우를
     호출부가 반드시 다루게 만든다. "기본값으로 채우기" 오버로드는 의도적으로 없다.
+  - 응답의 한 행을 읽지 못하면 그 행을 버리되 **사유와 건수를 남긴다**
+    (`SyncReport.parseFailures`, `sync_state.failureCount`). 0 으로 채우지 않는다.
+
+> **연동 전 확인 필요**: 응답 필드명(`aptNm`, `excluUseAr`, `dealAmount`, `deposit`,
+> `monthlyRent`, `cdealType` 등)은 공공데이터포털에 공개된 명세를 따랐으나, 개발 환경에서
+> data.go.kr 에 접속할 수 없어 **실제 응답으로 검증하지 못했다.** 최초 연동 시 실응답 한 건과
+> 대조할 것. 필드명이 어긋나면 값이 조용히 비는 게 아니라 "읽지 못한 행" 으로 집계되므로,
+> `SyncReport.parseFailures` 가 0 이 아니면 그 신호다.
 
 ---
 
@@ -29,7 +37,7 @@
 | 언어 / UI | Kotlin 2.0.21 + Jetpack Compose (Material 3) |
 | 최소 / 타깃 SDK | minSdk 26 (Android 8.0) / targetSdk 35 |
 | DI | Hilt |
-| 네트워크 | Retrofit + OkHttp + TikXml (국토부 API 는 XML 응답) |
+| 네트워크 | Retrofit + OkHttp (XML 응답은 `javax.xml` DOM 으로 직접 파싱) |
 | 로컬 캐시 | Room |
 | 폰트 | Pretendard (APK 에 번들링) |
 
@@ -75,9 +83,36 @@ app/src/main/kotlin/com/aptprice/tracker/
 │  ├─ attribution/   출처 표기 문구 + TradeValue (값 없음을 타입으로 강제)
 │  ├─ format/        금액(억/만원) · 면적(㎡/평) · 날짜 포맷
 │  └─ time/          조회 기간(2주~5년) · 계약일 구간 ↔ DEAL_YMD · 호출량 계산
-├─ domain/region/    법정동 코드 카탈로그 + 동탄 법정동 필터
+├─ domain/
+│  ├─ model/         AptTrade · AptRent (실거래 도메인 모델)
+│  ├─ region/        법정동 코드 카탈로그 + 동탄 법정동 필터
+│  └─ repository/    TradeRepository 인터페이스 + 동기화 보고 모델
+├─ data/
+│  ├─ remote/api/    Retrofit 서비스 + 인증키 인코딩
+│  ├─ remote/parser/ 응답 XML → 도메인 모델, 오류/미신고 판별
+│  ├─ cache/         (지역 × 계약월) 캐시 만료 정책
+│  ├─ local/         Room DB · 엔티티 · DAO
+│  ├─ mapper/        도메인 ↔ 엔티티
+│  └─ repository/    동기화 오케스트레이션 (캐시 판정 · 동시 실행 · 중단)
+├─ di/               Hilt 모듈
 └─ ui/theme/         Pretendard 타이포그래피 · 컬러 · Material3 테마
 ```
+
+## 데이터 파이프라인 (Step 2)
+
+```
+TradeQueryPlan  →  캐시 만료 판정  →  국토부 API (동시 4)  →  파싱  →  Room 저장
+ (지역 × 계약월)     CachePolicy        Retrofit + DOM        실패 집계   월 단위 교체
+```
+
+- **캐시 단위**는 `(시군구 × 계약월 × 엔드포인트)` 다. API 가 그 단위로만 응답하기 때문이다.
+- **만료 정책**은 계약월의 나이에 따라 다르다. 실거래 신고 기한이 30일이라 최근 3개월은
+  신고가 계속 들어오므로 6시간, 그보다 오래된 달은 30일로 잡는다.
+  덕분에 5년 조회 61개월 중 대부분은 한 번 받으면 다시 받지 않는다.
+- **갱신은 월 단위 교체**다. 행을 합치지 않고 그 달을 통째로 지우고 다시 넣는다.
+  지연 신고와 계약 해제까지 정확히 따라가기 위한 것이다.
+- **중단 조건**: 인증키 오류나 트래픽 초과를 만나면 남은 구간을 포기한다.
+  (5년 × 전체 지역이면 4,392 구간이므로, 인증 문제로 전부 때리면 한도만 날린다)
 
 ## 조회 기간 (기본 2주 · 최대 5년)
 
@@ -142,7 +177,7 @@ Pretendard 를 `app/src/main/res/font` 에 직접 번들링한다 (Regular / Med
 ## 진행 상황
 
 - [x] **Step 1** — 프로젝트 초기화, Pretendard 번들링, 금액/면적/날짜 유틸리티, 법정동 코드 테이블, 조회 기간(2주~5년) 모델
-- [ ] **Step 2** — 공공데이터포털 API 클라이언트, 기간 필터, (지역 × 계약월) 단위 Room 캐시
+- [x] **Step 2** — 공공데이터포털 API 클라이언트, 응답 파서, (지역 × 계약월) 단위 Room 캐시, 동기화 오케스트레이션
 - [ ] **Step 3** — 메인 화면 (실거래 피드, 매매/전세/월세 탭, 기간 선택, 지역 필터)
 - [ ] **Step 4** — 상세 화면 (평형 선택 칩, 기간 전환 3개월~5년, 시계열 라인 차트)
 - [ ] **Step 5** — 무결성 검증 (Mock 데이터 배제 확인, 출처 라벨 표기 확인)

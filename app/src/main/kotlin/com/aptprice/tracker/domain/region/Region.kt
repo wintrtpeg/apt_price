@@ -26,6 +26,14 @@ data class Region(
      * 화성시(41590) 처럼 시 단위 코드 하나에 동탄 외 지역이 함께 묶여 있는 경우에만 값을 갖는다.
      */
     val umdWhitelist: Set<String>? = null,
+    /**
+     * 캐시에 **저장할 때** 쓰는 화이트리스트. 기본값은 [umdWhitelist] 와 같다.
+     *
+     * 동탄처럼 대상 법정동 목록을 설정에서 바꿀 수 있는 지역은, 고를 수 있는 모든 법정동을
+     * 미리 저장해 두면 설정을 바꿔도 다시 받아올 필요가 없다.
+     * (읽을 때는 [umdWhitelist] 로 다시 거르므로 화면에 보이는 범위는 달라지지 않는다)
+     */
+    val storageUmdWhitelist: Set<String>? = umdWhitelist,
 ) {
     init {
         require(lawdCd.length == 5 && lawdCd.all { it.isDigit() }) {
@@ -34,8 +42,13 @@ data class Region(
     }
 
     /** API 응답의 법정동명(umdNm)이 이 지역의 조회 대상인지 판정한다. */
-    fun includesUmd(umdNm: String?): Boolean {
-        val whitelist = umdWhitelist ?: return true
+    fun includesUmd(umdNm: String?): Boolean = matches(umdWhitelist, umdNm)
+
+    /** 캐시에 저장할 대상인지 판정한다. [includesUmd] 보다 넓거나 같다. */
+    fun storesUmd(umdNm: String?): Boolean = matches(storageUmdWhitelist, umdNm)
+
+    private fun matches(whitelist: Set<String>?, umdNm: String?): Boolean {
+        if (whitelist == null) return true
         val normalized = umdNm?.trim().orEmpty()
         if (normalized.isEmpty()) return false
         return normalized in whitelist

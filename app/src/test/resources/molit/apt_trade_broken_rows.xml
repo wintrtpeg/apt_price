@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 파서 테스트용 입력. 읽을 수 없는 행이 섞여 있다. 실제 실거래 데이터가 아님. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptNm>정상행아파트</aptNm>
+        <dealAmount>50,000</dealAmount>
+        <dealDay>2</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <excluUseAr>59.99</excluUseAr>
+        <floor>3</floor>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+      <item>
+        <!-- 거래금액이 비어 있음 -->
+        <aptNm>금액없는아파트</aptNm>
+        <dealAmount></dealAmount>
+        <dealDay>2</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <excluUseAr>59.99</excluUseAr>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+      <item>
+        <!-- 전용면적 태그 자체가 없음 -->
+        <aptNm>면적없는아파트</aptNm>
+        <dealAmount>60,000</dealAmount>
+        <dealDay>2</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+      <item>
+        <!-- 계약일이 형식에 안 맞음 -->
+        <aptNm>날짜깨진아파트</aptNm>
+        <dealAmount>70,000</dealAmount>
+        <dealDay>31</dealDay>
+        <dealMonth>2</dealMonth>
+        <dealYear>2026</dealYear>
+        <excluUseAr>84.97</excluUseAr>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+      </item>
+    </items>
+    <numOfRows>1000</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>4</totalCount>
+  </body>
+</response>

@@ -38,11 +38,12 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Step 1 확인용 임시 화면.
+ * Step 1~2 확인용 임시 화면.
  *
- * 실거래 피드(Step 3)가 붙기 전까지 자리를 지키며, Step 1 산출물인
- * 폰트·지역 카탈로그·조회 구간 계산이 실제로 동작하는지 눈으로 확인하는 용도다.
- * **여기에는 어떤 거래 데이터도 표시하지 않는다.** 표시할 실거래 값이 아직 없기 때문이다.
+ * 실거래 피드(Step 3)가 붙기 전까지 자리를 지키며, 폰트·지역 카탈로그·조회 구간 계산이
+ * 실제로 동작하는지 눈으로 확인하는 용도다.
+ * **여기에는 어떤 거래 데이터도 표시하지 않는다.** 화면에 붙이는 것은 Step 3 의 일이고,
+ * 그때도 값은 오직 국토교통부 응답에서만 온다.
  */
 @Composable
 private fun Step1Placeholder(modifier: Modifier = Modifier) {
@@ -56,7 +57,7 @@ private fun Step1Placeholder(modifier: Modifier = Modifier) {
     ) {
         Text("실거래트래커", style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Step 1 · 프로젝트 초기화 완료",
+            "Step 2 · 실거래가 API 클라이언트 + 캐시 완료",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
         )
