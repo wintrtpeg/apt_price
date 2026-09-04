@@ -1,6 +1,7 @@
 package com.aptprice.tracker.presentation.detail
 
 import com.aptprice.tracker.core.attribution.DataSourceAttribution
+import com.aptprice.tracker.core.format.AreaBucket
 import com.aptprice.tracker.core.format.AreaFormatter
 import com.aptprice.tracker.core.format.DateFormatter
 import com.aptprice.tracker.core.format.MoneyFormatter
@@ -57,7 +58,7 @@ data class DetailUiState(
 ) {
     /** 선택된 평형의 표기. 예) `84.97㎡ (25.7평)` */
     val areaLabel: String
-        get() = key?.areaM2?.let(AreaFormatter::formatWithPyeong).orEmpty()
+        get() = key?.areaM2?.let(AreaFormatter::formatWithBucket).orEmpty()
 
     fun attributionLabel(zone: ZoneId = ZoneId.systemDefault()): String =
         lastFetchedAt
@@ -79,8 +80,10 @@ data class DetailUiState(
             return areas.sorted().map { area ->
                 AreaChip(
                     areaM2 = area,
-                    label = AreaFormatter.formatPyeongChip(area),
-                    detailLabel = "전용 ${AreaFormatter.formatM2(area)}",
+                    // 같은 단지 안에서 타입을 고르는 자리라 전용면적을 그대로 보여 준다.
+                    // 평형대(30평대 등)로는 서로 다른 타입이 한 칩으로 뭉개진다.
+                    label = AreaFormatter.formatM2(area),
+                    detailLabel = "전용 ${AreaFormatter.formatM2(area)} · ${AreaBucket.of(area).label}",
                     key = ComplexAreaKey.ofComplex(complexKey, area),
                     selected = ComplexAreaKey.formatArea(area) == selectedArea,
                 )

@@ -33,8 +33,18 @@ object AreaFormatter {
     /**
      * 목록 카드용 병기 표기.
      * 예) `84.97㎡ (25.7평)`
+     *
+     * 여기서의 평은 전용면적을 그대로 환산한 값이다. 시장에서 부르는 평형대와는
+     * 기준이 다르므로, 화면에는 [formatWithBucket] 을 쓴다.
      */
     fun formatWithPyeong(areaM2: Double): String = "${formatM2(areaM2)} (${formatPyeong(areaM2)})"
+
+    /**
+     * 화면에 쓰는 면적 표기. 원자료 그대로의 전용면적과 시장 호칭을 함께 보여 준다.
+     * 예) `84.97㎡ · 30평대`
+     */
+    fun formatWithBucket(areaM2: Double): String =
+        "${formatM2(areaM2)} · ${AreaBucket.of(areaM2).label}"
 
     /**
      * 단지 상세의 평형 선택 칩 라벨.
@@ -59,31 +69,49 @@ object AreaFormatter {
 }
 
 /**
- * 전용면적 기준 평형대.
+ * 평형대. 시장에서 아파트를 부르는 이름(20평대·30평대…)에 맞춘 구간이다.
  *
- * 경계값은 임의로 정한 값이 아니라 국내 주택 제도의 기준을 따른다.
- * - 60㎡: 「주택법 시행령」상 소형주택 판단 기준으로 통용되는 면적
- * - 85㎡: 국민주택규모(전용 85㎡ 이하)
+ * ## 구간을 전용면적으로 정한 이유
+ * 사람들이 말하는 "30평대"는 공급면적(전용 + 주거공용) 기준 호칭이다. 반면 국토교통부
+ * 실거래가 자료에는 **전용면적만 있고 공급면적이 없다.** 공급면적을 추정해 만들어 내는
+ * 것은 이 앱의 원칙에 어긋나므로, 대신 각 호칭에 해당하는 **전용면적 구간**을 직접 잡았다.
+ *
+ * 널리 쓰이는 대응 관계를 따른다.
+ * - 전용 59㎡ → 20평대
+ * - 전용 84㎡ → 30평대  (이른바 국민평형)
+ * - 전용 114㎡ → 40평대
+ *
+ * 화면에는 언제나 원자료 그대로의 전용면적(㎡)을 함께 표시한다.
  */
 enum class AreaBucket(val label: String, val description: String) {
-    /** 전용 60㎡ 미만 (약 18평 미만) */
-    SMALL("소형", "전용 60㎡ 미만"),
+    /** 전용 50㎡ 미만 */
+    UNDER_20("10평대 이하", "전용 50㎡ 미만"),
 
-    /** 전용 60㎡ 이상 85㎡ 이하 — 국민주택규모 */
-    MEDIUM("중형", "전용 60㎡ ~ 85㎡"),
+    /** 전용 50㎡ 이상 66㎡ 미만 — 통상 전용 59㎡ */
+    PYEONG_20("20평대", "전용 50 ~ 66㎡"),
 
-    /** 전용 85㎡ 초과 */
-    LARGE("대형", "전용 85㎡ 초과"),
+    /** 전용 66㎡ 이상 99㎡ 미만 — 통상 전용 84㎡ (국민평형) */
+    PYEONG_30("30평대", "전용 66 ~ 99㎡"),
+
+    /** 전용 99㎡ 이상 132㎡ 미만 — 통상 전용 114㎡ */
+    PYEONG_40("40평대", "전용 99 ~ 132㎡"),
+
+    /** 전용 132㎡ 이상 */
+    OVER_50("50평대 이상", "전용 132㎡ 이상"),
     ;
 
     companion object {
-        private const val SMALL_MAX_EXCLUSIVE = 60.0
-        private const val MEDIUM_MAX_INCLUSIVE = 85.0
+        private const val PYEONG_20_MIN = 50.0
+        private const val PYEONG_30_MIN = 66.0
+        private const val PYEONG_40_MIN = 99.0
+        private const val OVER_50_MIN = 132.0
 
         fun of(areaM2: Double): AreaBucket = when {
-            areaM2 < SMALL_MAX_EXCLUSIVE -> SMALL
-            areaM2 <= MEDIUM_MAX_INCLUSIVE -> MEDIUM
-            else -> LARGE
+            areaM2 < PYEONG_20_MIN -> UNDER_20
+            areaM2 < PYEONG_30_MIN -> PYEONG_20
+            areaM2 < PYEONG_40_MIN -> PYEONG_30
+            areaM2 < OVER_50_MIN -> PYEONG_40
+            else -> OVER_50
         }
     }
 }

@@ -120,7 +120,7 @@ class FeedViewModelTest {
         repo.emit(listOf(trade(area = 39.72), trade(area = 84.97)))
         val syncCountBefore = repo.syncedPlans.size
 
-        vm.toggleAreaBucket(AreaBucket.SMALL)
+        vm.toggleAreaBucket(AreaBucket.UNDER_20)
 
         assertEquals(syncCountBefore, repo.syncedPlans.size)
         assertEquals(1, vm.uiState.value.itemCount)

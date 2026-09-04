@@ -73,8 +73,8 @@ class FeedBuilderTest {
 
         assertEquals("피드테스트아파트", item.aptName)
         assertEquals("강남구 역삼동", item.regionLabel)
-        assertEquals("84.97㎡ (25.7평)", item.areaLabel)
-        assertEquals("중형", item.areaBucketLabel)
+        assertEquals("84.97㎡ · 30평대", item.areaLabel)
+        assertEquals("30평대", item.areaBucketLabel)
         assertEquals("10층", item.floorLabel)
         assertEquals("09.03 (목)", item.dateLabel)
         assertEquals("어제", item.relativeDateLabel)
@@ -215,13 +215,13 @@ class FeedBuilderTest {
     fun `평형대 필터를 걸면 해당 구간만 남는다`() {
         val deals = listOf(trade(area = 39.72), trade(area = 84.97), trade(area = 134.88))
 
-        val small = FeedBuilder.build(deals, FeedFilter(areaBuckets = setOf(AreaBucket.SMALL)), today)
+        val small = FeedBuilder.build(deals, FeedFilter(areaBuckets = setOf(AreaBucket.UNDER_20)), today)
         assertEquals(1, small.size)
-        assertEquals("소형", small.single().areaBucketLabel)
+        assertEquals("10평대 이하", small.single().areaBucketLabel)
 
         val mixed = FeedBuilder.build(
             deals,
-            FeedFilter(areaBuckets = setOf(AreaBucket.SMALL, AreaBucket.LARGE)),
+            FeedFilter(areaBuckets = setOf(AreaBucket.UNDER_20, AreaBucket.OVER_50)),
             today,
         )
         assertEquals(2, mixed.size)
