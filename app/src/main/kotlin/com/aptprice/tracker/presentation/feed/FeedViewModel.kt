@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -58,6 +59,7 @@ class FeedViewModel @Inject constructor(
                 wasConfigured = configured
                 if (previous == false && configured) requestSync(force = false)
             }
+            .catch { error -> showFlowError("인증키 상태를 읽지 못했습니다", error) }
             .launchIn(viewModelScope)
     }
 
@@ -84,6 +86,8 @@ class FeedViewModel @Inject constructor(
                     )
                 }
             }
+            // Flow 안에서 던져진 예외는 그대로 앱을 종료시킨다. 화면에 알리고 멈춘다.
+            .catch { error -> showFlowError("목록을 표시하지 못했습니다", error) }
             .launchIn(viewModelScope)
     }
 
@@ -178,8 +182,8 @@ class FeedViewModel @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                // 여기까지 올라온 예외는 앱을 종료시킨다. 화면에 알리고 끝낸다.
+            } catch (e: Throwable) {
+                // 여기까지 올라온 것은 앱을 종료시킨다. Error 까지 포함해 막는다.
                 _uiState.update { state ->
                     state.copy(
                         sync = SyncStatus(inProgress = false),
@@ -226,6 +230,20 @@ class FeedViewModel @Inject constructor(
     private fun currentPlan(): TradeQueryPlan {
         val filter = filterFlow.value
         return TradeQueryPlan.of(filter.period, today(), filter.regions.codes())
+    }
+
+    /** Flow 가 실패했을 때 앱을 죽이는 대신 화면에 남긴다. */
+    private fun showFlowError(prefix: String, error: Throwable) {
+        _uiState.update { state ->
+            state.copy(
+                sync = SyncStatus(inProgress = false),
+                isRefreshing = false,
+                content = FeedContent.Error(
+                    message = "$prefix: ${error.message ?: error::class.simpleName.orEmpty()}",
+                    retryable = true,
+                ),
+            )
+        }
     }
 
     /** 지금 조건으로 조회하면 몇 번을 부르게 되는지. 화면에 미리 보여 준다. */
