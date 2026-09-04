@@ -1,0 +1,8 @@
+# 이 파일을 local.properties 로 복사한 뒤 값을 채우세요. local.properties 는 .gitignore 대상입니다.
+
+# Android SDK 경로
+sdk.dir=/path/to/Android/sdk
+
+# 공공데이터포털(data.go.kr) 에서 발급받은 "일반 인증키 (Decoding)" 값
+# 국토교통부_아파트 매매/전월세 실거래가 자료 활용신청 후 발급됩니다.
+MOLIT_SERVICE_KEY=여기에_디코딩_인증키를_붙여넣으세요

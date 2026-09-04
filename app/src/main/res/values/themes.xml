@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Compose 로 그리기 전 첫 프레임에도 Pretendard 가 적용되도록 테마에서 지정한다.
+      (기기 기본 한글 폰트로 잠깐 그려졌다가 바뀌는 깜빡임 방지)
+    -->
+    <style name="Theme.AptPriceTracker" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">@font/pretendard</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/surface_muted</item>
+    </style>
+</resources>
