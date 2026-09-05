@@ -35,6 +35,24 @@ interface TradeRepository {
     fun observeJeonseSeries(complexAreaKey: String, period: TradePeriod): Flow<List<AptRent>>
 
     /**
+     * 카드 미니 그래프용 금액 흐름. 키마다 **오래된 순**으로 준다.
+     *
+     * 카드 한 장씩 조회하면 목록이 100장일 때 쿼리도 100번이므로 키를 한 번에 받는다.
+     * 목록과 달리 기간으로 자르지 않는다 — 기본 2주로 자르면 대부분 한 건만 남아
+     * 그릴 것이 없다. 받아 둔 자료 안에서의 흐름을 그대로 보여 준다.
+     *
+     * 월세 탭은 보증금 흐름이다 (목록·요약이 쓰는 비교값과 같다).
+     *
+     * 키가 아주 많으면 **앞에서부터 일부만** 본다. 5년치 서울 전역이면 카드가 수만 장이라
+     * 전부를 한 쿼리에 넣을 수 없다. 뒤쪽 카드는 그래프 없이 나온다 —
+     * 지어낸 그래프를 붙이는 것보다 낫다. 그러니 화면에 보이는 순서대로 넘길 것.
+     */
+    fun observeAmountSeries(
+        complexAreaKeys: List<String>,
+        tab: DealTab,
+    ): Flow<Map<String, List<Long>>>
+
+    /**
      * 단지명으로 검색한다. **이미 받아온 자료 안에서만** 찾는다.
      * 두 글자 미만이면 빈 목록을 돌려준다.
      */

@@ -109,6 +109,30 @@ class TradeRepositoryImpl(
             .map { rows -> rows.map { it.toDomain() }.filterVisible() }
     }
 
+    override fun observeAmountSeries(
+        complexAreaKeys: List<String>,
+        tab: DealTab,
+    ): Flow<Map<String, List<Long>>> {
+        val keys = complexAreaKeys.distinct().take(MAX_SERIES_KEYS)
+        // 화면에 카드가 없으면 조회할 것도 없다.
+        if (keys.isEmpty()) return flowOf(emptyMap())
+
+        val rows = when (tab) {
+            DealTab.SALE -> tradeDao.observeSparkPoints(keys)
+            DealTab.JEONSE -> rentDao.observeSparkPoints(keys, jeonseOnly = true)
+            DealTab.MONTHLY -> rentDao.observeSparkPoints(keys, jeonseOnly = false)
+        }
+
+        return rows.map { points ->
+            points.groupBy { it.complexAreaKey }
+                // 쿼리도 날짜순으로 주지만, 순서를 여기서 한 번 더 못박아 둔다.
+                // 그래프는 순서가 뒤집히면 없는 등락을 그린다.
+                .mapValues { (_, group) ->
+                    group.sortedBy { it.dealDateEpochDay }.map { it.amountManwon }
+                }
+        }
+    }
+
     override fun searchComplexes(query: String): Flow<List<ComplexSummary>> {
         val trimmed = query.trim()
         // 한 글자로는 결과가 너무 많아 쓸모가 없다.
@@ -535,7 +559,7 @@ class TradeRepositoryImpl(
     /** 어느 매매 서비스가 열려 있는지. 한 번 확인되면 그쪽만 쓴다. */
     private enum class TradeApiVariant { DETAIL, BASIC }
 
-    private companion object {
+    companion object {
         /**
          * 동시 요청 수.
          *
@@ -549,6 +573,18 @@ class TradeRepositoryImpl(
 
         /** 검색 결과 상한. */
         const val SEARCH_LIMIT = 50
+
+        /**
+         * 카드 그래프를 한 번에 조회할 단지·평형 수 상한.
+         *
+         * `IN (:keys)` 는 키 하나가 바인드 변수 하나다. 안드로이드의 SQLite 는
+         * 한 문장에 999개까지만 받는다 (SQLite 3.32 미만). 5년치 서울 전역을 고르면
+         * 카드가 수만 장이라 그대로 넣으면 "too many SQL variables" 로 터진다.
+         *
+         * 넘치는 뒤쪽 카드는 그래프 없이 나온다. 한 번에 그만큼 내려 볼 일도 없고,
+         * 없는 그래프를 지어 붙이는 것보다는 비워 두는 편이 맞다.
+         */
+        const val MAX_SERIES_KEYS = 400
 
         const val MAX_ATTEMPTS = 3
         const val RETRY_BASE_DELAY_MILLIS = 500L

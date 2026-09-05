@@ -66,6 +66,38 @@ class FakeTradeRepository(
             list.filterIsInstance<AptRent>().filter { it.complexAreaKey == complexAreaKey && it.isJeonse }
         }
 
+    /** observeAmountSeries 가 어떤 키·탭으로 불렸는지 (카드마다 조회하지 않는지 확인용) */
+    val observedSeriesQueries = mutableListOf<Pair<List<String>, DealTab>>()
+
+    override fun observeAmountSeries(
+        complexAreaKeys: List<String>,
+        tab: DealTab,
+    ): Flow<Map<String, List<Long>>> {
+        observedSeriesQueries += complexAreaKeys to tab
+        val keys = complexAreaKeys.toSet()
+        return deals.map { list ->
+            list.asSequence()
+                .filter { it.complexAreaKey in keys }
+                .filter {
+                    when (tab) {
+                        DealTab.SALE -> it is AptTrade && !it.canceled
+                        DealTab.JEONSE -> it is AptRent && it.isJeonse
+                        DealTab.MONTHLY -> it is AptRent && !it.isJeonse
+                    }
+                }
+                .sortedBy { it.dealDate }
+                .groupBy { it.complexAreaKey }
+                .mapValues { (_, group) ->
+                    group.map { deal ->
+                        when (deal) {
+                            is AptTrade -> deal.dealAmountManwon
+                            is AptRent -> deal.depositManwon
+                        }
+                    }
+                }
+        }
+    }
+
     override fun observeAreasOfComplex(complexKey: String): Flow<List<Double>> =
         deals.map { list -> list.filter { it.complexKey == complexKey }.map { it.exclusiveAreaM2 }.distinct() }
 

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -64,20 +65,30 @@ class FeedViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeDeals() {
-        // StateFlow 는 같은 값을 이미 걸러 내므로 distinctUntilChanged 가 필요 없다.
+        // filterFlow 는 StateFlow 라 같은 필터를 두 번 흘리지 않는다.
         filterFlow
             .flatMapLatest { filter ->
                 repository
                     .observeDeals(filter.period, filter.regions.codes(), filter.tab)
                     .map { deals -> filter to FeedBuilder.build(deals, filter, today()) }
             }
-            .onEach { (filter, items) ->
+            // 목록이 그대로면 그래프도 다시 조회하지 않는다.
+            .distinctUntilChanged()
+            .flatMapLatest { (filter, items) ->
+                // 그래프는 목록에 담을 수 없다. 카드가 보여 주는 한 건이 아니라
+                // 그 단지·평형의 지난 거래들이라, 목록과는 다른 조회가 필요하다.
+                repository
+                    .observeAmountSeries(items.map { it.complexAreaKey }, filter.tab)
+                    .map { series -> Triple(filter, items, SparklineBuilder.build(series, filter.tab)) }
+            }
+            .onEach { (filter, items, sparklines) ->
                 // 요약은 목록을 그대로 접은 것이라 다시 조회하지 않는다.
                 val summary = FeedSummaryBuilder.build(items, filter.period, filter.tab, today())
                 _uiState.update { state ->
                     state.copy(
                         filter = filter,
                         summary = summary,
+                        sparklines = sparklines,
                         content = when {
                             items.isNotEmpty() -> FeedContent.Items(items)
                             // 아직 한 번도 받아오지 않았다면 "없음" 이 아니라 로딩이다.
