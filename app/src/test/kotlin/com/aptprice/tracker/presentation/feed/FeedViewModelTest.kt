@@ -116,6 +116,47 @@ class FeedViewModelTest {
     }
 
     @Test
+    fun `목록과 함께 요약이 만들어진다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+
+        repo.emit(listOf(trade(day = 1, amount = 80_000), trade(day = 3, amount = 90_000)))
+
+        val summary = vm.uiState.value.summary!!
+        assertEquals(2, summary.dealCount)
+        assertEquals(85_000L, summary.medianManwon)
+        // 요약은 목록을 접은 것이라 조회가 더 일어나지 않는다.
+        assertEquals(1, repo.syncedPlans.size)
+    }
+
+    @Test
+    fun `보여줄 거래가 없으면 요약도 없다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+
+        // 빈 요약을 0 으로 채워 띄우면 "0원" 처럼 읽힌다.
+        assertNull(vm.uiState.value.summary)
+    }
+
+    @Test
+    fun `탭을 바꾸면 요약도 그 탭 기준으로 바뀐다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+        repo.emit(listOf(trade(amount = 87_500), jeonse()))
+
+        assertEquals(DealTab.SALE, vm.uiState.value.summary!!.tab)
+        assertEquals(87_500L, vm.uiState.value.summary!!.medianManwon)
+
+        vm.selectTab(DealTab.JEONSE)
+
+        assertEquals(DealTab.JEONSE, vm.uiState.value.summary!!.tab)
+        assertEquals(50_000L, vm.uiState.value.summary!!.medianManwon)
+    }
+
+    @Test
     fun `탭을 바꾸면 해당 유형만 보인다`() = runTest {
         val repo = FakeTradeRepository()
         repo.fetchedAt = Instant.now(clock)

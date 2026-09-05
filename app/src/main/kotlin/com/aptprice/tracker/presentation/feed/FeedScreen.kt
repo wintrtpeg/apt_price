@@ -55,6 +55,7 @@ import com.aptprice.tracker.presentation.feed.components.EmptyStateView
 import com.aptprice.tracker.presentation.feed.components.ErrorStateView
 import com.aptprice.tracker.presentation.feed.components.FeedCard
 import com.aptprice.tracker.presentation.feed.components.FeedSkeletonCard
+import com.aptprice.tracker.presentation.feed.components.FeedSummaryCard
 import com.aptprice.tracker.presentation.feed.components.FilterBar
 import com.aptprice.tracker.presentation.feed.components.NoticeBanner
 import com.aptprice.tracker.presentation.feed.components.PeriodChips
@@ -268,6 +269,15 @@ private fun FeedList(
         }
         state.partialSyncNotice?.let {
             item(key = "partialNotice") { NoticeBanner(it, onDismissNotices) }
+        }
+
+        // 목록 맨 위 요약. 거래가 있을 때만 나온다.
+        state.summary?.let { summary ->
+            if (state.content is FeedContent.Items) {
+                item(key = "summary") {
+                    FeedSummaryCard(summary = summary, modifier = Modifier.padding(bottom = 2.dp))
+                }
+            }
         }
 
         when (val content = state.content) {

@@ -70,6 +70,11 @@ data class FeedUiState(
     val isRefreshing: Boolean = false,
     /** 마지막으로 국토부 자료를 받아온 시각. 없으면 아직 동기화 전. */
     val lastFetchedAt: Instant? = null,
+    /**
+     * 목록 맨 위에 얹는 요약. 보여줄 거래가 없으면 null 이라 카드도 뜨지 않는다.
+     * 목록에서 바로 접은 값이라 필터가 어긋날 일이 없다.
+     */
+    val summary: FeedSummary? = null,
     /** 확인이 필요한 무거운 조회. null 이면 확인 대기 없음. */
     val heavyQueryPrompt: HeavyQueryPrompt? = null,
     /** 읽지 못한 행이 있었을 때의 알림. 파서 점검 신호이므로 숨기지 않는다. */

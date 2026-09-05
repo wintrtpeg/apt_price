@@ -72,9 +72,12 @@ class FeedViewModel @Inject constructor(
                     .map { deals -> filter to FeedBuilder.build(deals, filter, today()) }
             }
             .onEach { (filter, items) ->
+                // 요약은 목록을 그대로 접은 것이라 다시 조회하지 않는다.
+                val summary = FeedSummaryBuilder.build(items, filter.period, filter.tab, today())
                 _uiState.update { state ->
                     state.copy(
                         filter = filter,
+                        summary = summary,
                         content = when {
                             items.isNotEmpty() -> FeedContent.Items(items)
                             // 아직 한 번도 받아오지 않았다면 "없음" 이 아니라 로딩이다.
