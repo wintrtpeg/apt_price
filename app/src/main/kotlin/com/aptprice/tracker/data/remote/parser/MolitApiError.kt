@@ -20,6 +20,15 @@ data class MolitApiError(
         /** 인증키가 등록되지 않았거나 잘못됨 */
         INVALID_SERVICE_KEY,
 
+        /**
+         * 인증키는 유효하지만 **이 API 를 쓸 권한이 없음.**
+         *
+         * 공공데이터포털에서 그 API 를 활용신청하지 않았거나 아직 승인되지 않은 상태다.
+         * 인증키 자체가 잘못된 것과는 다르다 — 다른 API 는 정상으로 동작한다.
+         * (전월세는 나오는데 매매만 안 나오던 증상이 바로 이 경우다)
+         */
+        ACCESS_DENIED,
+
         /** 일일 트래픽 한도 초과 */
         QUOTA_EXCEEDED,
 
@@ -38,12 +47,25 @@ data class MolitApiError(
     fun userMessage(): String = when (kind) {
         Kind.NO_DATA -> "거래 데이터 없음"
         Kind.INVALID_SERVICE_KEY -> "공공데이터포털 인증키가 올바르지 않습니다 (코드 $code)"
+        Kind.ACCESS_DENIED -> ACCESS_DENIED_GUIDE
         Kind.QUOTA_EXCEEDED -> "공공데이터포털 일일 조회 한도를 초과했습니다 (코드 $code)"
         Kind.EXPIRED -> "공공데이터포털 활용 기간이 만료되었습니다 (코드 $code)"
         Kind.SERVICE_ERROR -> "국토교통부 실거래가 조회에 실패했습니다 (코드 $code: $message)"
     }
 
     companion object {
+        /**
+         * 활용신청이 안 된 API 를 불렀을 때의 안내.
+         *
+         * 상태 코드만 보여 주면(예: `HTTP 403`) 사용자가 무엇을 해야 할지 알 수 없다.
+         * 해야 할 일을 그대로 적는다.
+         */
+        const val ACCESS_DENIED_GUIDE =
+            "이 자료를 조회할 권한이 없습니다. data.go.kr 에 로그인해 " +
+                "\"국토교통부_아파트 매매 실거래가 자료\" 와 \"국토교통부_아파트 전월세 자료\" 를 " +
+                "모두 활용신청하고, 승인된 뒤 다시 시도해 주세요. " +
+                "(신청 직후에는 반영까지 몇 분에서 한 시간쯤 걸립니다)"
+
         /** 정상 응답 코드. 서비스에 따라 "00" 또는 "000" 으로 온다. */
         val SUCCESS_CODES = setOf("00", "000")
 
@@ -60,6 +82,8 @@ data class MolitApiError(
         fun kindOf(code: String): Kind = when (code.trim().trimStart('0').ifEmpty { "0" }) {
             "3" -> Kind.NO_DATA
             "30" -> Kind.INVALID_SERVICE_KEY
+            // 20 = SERVICE_ACCESS_DENIED_ERROR (활용신청하지 않았거나 승인 대기 중)
+            "20" -> Kind.ACCESS_DENIED
             "31" -> Kind.EXPIRED
             "22" -> Kind.QUOTA_EXCEEDED
             else -> Kind.SERVICE_ERROR

@@ -113,6 +113,18 @@ internal object MolitResponse {
     }
 
     /**
+     * 본문에서 오류만 읽는다. 행은 보지 않는다.
+     *
+     * 2xx 가 아닌 응답에 쓴다. 상태 코드만으로는 "왜" 를 알 수 없고,
+     * 공공데이터포털은 사유를 본문에 담아 보내기 때문이다.
+     * 오류 형태가 아니거나 XML 이 아니면 null — 그때는 호출부가 상태 코드로 판단한다.
+     */
+    fun errorOf(xml: String): MolitApiError? {
+        val document = runCatching { MolitXml.parse(xml) }.getOrNull() ?: return null
+        return gatewayError(document) ?: serviceError(document)
+    }
+
+    /**
      * `<OpenAPI_ServiceResponse><cmmMsgHeader>` 형태의 포털 게이트웨이 오류.
      * 인증키 오류·트래픽 초과는 서비스에 닿기 전에 여기서 막힌다.
      */

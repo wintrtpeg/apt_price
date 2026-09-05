@@ -18,4 +18,12 @@ object MolitParser {
 
     fun parseRents(xml: String, lawdCd: String): MolitPage<AptRent> =
         MolitResponse.parse(xml) { AptRentParser.parseRow(it, lawdCd) }
+
+    /**
+     * 오류 응답 본문에서 사유만 읽는다. 오류 형태가 아니면 null.
+     *
+     * 2xx 가 아닌 응답에 쓴다. `HTTP 403` 만으로는 사용자가 할 수 있는 일이 없지만,
+     * 본문에는 `SERVICE_ACCESS_DENIED_ERROR` 처럼 실제 사유가 들어 있다.
+     */
+    fun parseError(xml: String): MolitApiError? = MolitResponse.errorOf(xml)
 }
