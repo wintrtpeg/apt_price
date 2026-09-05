@@ -1,17 +1,24 @@
 package com.aptprice.tracker.core.format
 
-import kotlin.math.roundToInt
-
 /**
- * 전용면적(㎡) ↔ 평 변환 및 평형대 분류.
+ * 전용면적 표기와 평형대 분류.
  *
  * 국토교통부 실거래가 API 의 `전용면적` 은 ㎡ 단위 실수 문자열이다.
- * 작업지시서 기준에 따라 `평 = ㎡ × 0.3025` 로 환산한다.
+ *
+ * ## 평(坪) 을 숫자로 병기하지 않는다
+ *
+ * 전용면적을 그대로 환산하면 84.97㎡ = 25.7평이지만, 시장에서 84㎡ 를 부르는 이름은
+ * **34평(국민평형)** 이다. 그건 공급면적(전용 + 계단·복도·엘리베이터) 기준이라 값이 다르다.
+ * 둘을 나란히 두면 사용자가 아는 평형과 어긋나 헷갈린다.
+ *
+ * 그렇다고 34평이라고 적을 수도 없다. 실거래가 API 는 **전용면적만 준다.**
+ * 전용률을 가정해 공급면적을 역산하면 그건 지어낸 값이다 (작업지시서 2.2).
+ *
+ * 그래서 면적은 **원자료 그대로 ㎡ 로만** 적는다. 시장 호칭에 대응하는 것은
+ * [AreaBucket] 이다 — 84.97㎡ 는 `30평대` 로 분류된다. 이건 계산값이 아니라
+ * 구간 이름이라 지어낸 값이 아니다.
  */
 object AreaFormatter {
-
-    /** 1㎡ = 0.3025평 (1평 = 3.3058㎡). */
-    const val PYEONG_PER_SQUARE_METER = 0.3025
 
     /** API 의 전용면적 문자열을 ㎡ 실수로 변환한다. 실패 시 null. */
     fun parseAreaM2(raw: String?): Double? {
@@ -21,34 +28,8 @@ object AreaFormatter {
         return if (value > 0.0) value else null
     }
 
-    /** ㎡ → 평 (반올림하지 않은 원값). */
-    fun toPyeong(areaM2: Double): Double = areaM2 * PYEONG_PER_SQUARE_METER
-
     /** `"84.97㎡"` — 소수점 2자리, 불필요한 0 은 제거. */
     fun formatM2(areaM2: Double): String = "${trimDecimals(areaM2, 2)}㎡"
-
-    /** `"25.7평"` — 소수점 1자리. */
-    fun formatPyeong(areaM2: Double): String = "${trimDecimals(toPyeong(areaM2), 1)}평"
-
-    /**
-     * 화면에 쓰는 면적 병기 표기.
-     * 예) `84.97㎡ (전용 25.7평)`
-     *
-     * **"전용" 을 반드시 붙인다.**
-     *
-     * 시장에서 84㎡ 를 "34평(국민평형)" 이라고 부르는데, 그건 공급면적
-     * (전용 + 계단·복도·엘리베이터 등 주거공용) 기준이다. 전용면적을 그대로 환산하면
-     * 25.7평이라 숫자가 완전히 다르다. 그냥 "25.7평" 이라고만 적으면 사람들이 아는
-     * 그 평형과 어긋나 잘못 읽는다.
-     *
-     * 그렇다고 34평이라고 쓸 수도 없다. 공급면적을 알아야 하는데 국토교통부 실거래가
-     * API 는 **전용면적만 준다.** 전용률(보통 70~80%)을 가정해 역산하면 그건 지어낸
-     * 값이다 (작업지시서 2.2). 아는 것만 적고, 무엇을 기준으로 한 값인지 밝힌다.
-     *
-     * 시장 호칭에 대응하는 것은 [AreaBucket] 이다 — 84.97㎡ 는 `30평대` 로 분류된다.
-     */
-    fun formatWithPyeong(areaM2: Double): String =
-        "${formatM2(areaM2)} (전용 ${formatPyeong(areaM2)})"
 
     /**
      * 화면에 쓰는 면적 표기. 원자료 그대로의 전용면적과 시장 호칭을 함께 보여 준다.
@@ -56,19 +37,6 @@ object AreaFormatter {
      */
     fun formatWithBucket(areaM2: Double): String =
         "${formatM2(areaM2)} · ${AreaBucket.of(areaM2).label}"
-
-    /**
-     * 단지 상세의 평형 선택 칩 라벨.
-     * 같은 단지 안에서 평형을 구분하는 용도이므로 정수 평으로 반올림한다.
-     * 예) 84.97㎡ → `"26평"`
-     *
-     * 주의: 여기서 말하는 평은 **전용면적 기준**이다.
-     * 시장에서 흔히 쓰는 "34평"은 공급면적(전용 + 주거공용) 기준이라 값이 다르다.
-     * (전용 84.97㎡ = 전용 26평 ≈ 시장 통칭 34평)
-     * 국토교통부 실거래가 API 는 전용면적만 제공하므로 공급면적은 알 수 없다.
-     * 시장 통칭 평형을 맞추겠다고 공급면적을 임의로 추정해 만들어 내지 말 것.
-     */
-    fun formatPyeongChip(areaM2: Double): String = "${toPyeong(areaM2).roundToInt()}평"
 
     /** 평형대 분류. 필터 칩(소형/중형/대형)에 사용한다. */
     fun bucketOf(areaM2: Double): AreaBucket = AreaBucket.of(areaM2)
