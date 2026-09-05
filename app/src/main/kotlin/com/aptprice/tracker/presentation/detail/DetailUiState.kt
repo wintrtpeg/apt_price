@@ -32,6 +32,8 @@ data class HistoryRow(
     val dateLabel: String,
     /** 예) `매매` / `전세` */
     val typeLabel: String,
+    /** 매매인가 전세인가. 화면이 색으로 구분할 때 문자열을 비교하지 않도록 둔다. */
+    val isSale: Boolean,
     /** 예) `8억 7,500만원` */
     val priceLabel: String,
     /** 예) `10층`. 원자료에 없으면 null. */
@@ -56,9 +58,15 @@ data class DetailUiState(
     /** 조회 결과가 없을 때의 문구. 없으면 null. */
     val emptyMessage: String? = null,
 ) {
-    /** 선택된 평형의 표기. 예) `84.97㎡ (25.7평)` */
+    /**
+     * 선택된 평형의 표기. 예) `84.69㎡ (25.6평)`
+     *
+     * "30평대" 같은 평형대가 아니라 **그 타입의 실제 평수**를 괄호로 병기한다.
+     * 같은 30평대 안에서도 84.69㎡ 와 75.93㎡ 는 다른 집이라, 평형대만으로는
+     * 지금 보고 있는 것이 무엇인지 알 수 없다.
+     */
     val areaLabel: String
-        get() = key?.areaM2?.let(AreaFormatter::formatWithBucket).orEmpty()
+        get() = key?.areaM2?.let(AreaFormatter::formatWithPyeong).orEmpty()
 
     fun attributionLabel(zone: ZoneId = ZoneId.systemDefault()): String =
         lastFetchedAt
@@ -82,8 +90,10 @@ data class DetailUiState(
                     areaM2 = area,
                     // 같은 단지 안에서 타입을 고르는 자리라 전용면적을 그대로 보여 준다.
                     // 평형대(30평대 등)로는 서로 다른 타입이 한 칩으로 뭉개진다.
-                    label = AreaFormatter.formatM2(area),
-                    detailLabel = "전용 ${AreaFormatter.formatM2(area)} · ${AreaBucket.of(area).label}",
+                    // 칩에도 실제 평수를 괄호로 함께 적는다. ㎡ 만으로는 몇 평인지 감이 안 온다.
+                    label = AreaFormatter.formatWithPyeong(area),
+                    // formatWithPyeong 이 이미 "전용" 을 붙이므로 앞에 또 붙이지 않는다.
+                    detailLabel = "${AreaFormatter.formatWithPyeong(area)} · ${AreaBucket.of(area).label}",
                     key = ComplexAreaKey.ofComplex(complexKey, area),
                     selected = ComplexAreaKey.formatArea(area) == selectedArea,
                 )
@@ -104,6 +114,7 @@ data class DetailUiState(
                     id = "S|${trade.dealDate}|${trade.floor}|${trade.dealAmountManwon}",
                     dateLabel = DateFormatter.formatIso(trade.dealDate),
                     typeLabel = "매매",
+                    isSale = true,
                     priceLabel = MoneyFormatter.formatManwon(trade.dealAmountManwon),
                     floorLabel = trade.floor?.let { "${it}층" },
                     isPeak = !trade.canceled && trade.dealAmountManwon == peakAmountManwon,
@@ -115,6 +126,7 @@ data class DetailUiState(
                     id = "J|${rent.dealDate}|${rent.floor}|${rent.depositManwon}",
                     dateLabel = DateFormatter.formatIso(rent.dealDate),
                     typeLabel = "전세",
+                    isSale = false,
                     priceLabel = MoneyFormatter.formatManwon(rent.depositManwon),
                     floorLabel = rent.floor?.let { "${it}층" },
                     isPeak = false,

@@ -1,6 +1,8 @@
 package com.aptprice.tracker.core.format
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -29,9 +31,31 @@ class AreaFormatterTest {
     }
 
     @Test
-    fun `목록 카드에는 제곱미터와 평을 함께 표기한다`() {
-        assertEquals("84.97㎡ (25.7평)", AreaFormatter.formatWithPyeong(84.97))
-        assertEquals("59.99㎡ (18.1평)", AreaFormatter.formatWithPyeong(59.99))
+    fun `제곱미터와 평을 함께 표기하되 전용 기준임을 밝힌다`() {
+        assertEquals("84.97㎡ (전용 25.7평)", AreaFormatter.formatWithPyeong(84.97))
+        assertEquals("59.99㎡ (전용 18.1평)", AreaFormatter.formatWithPyeong(59.99))
+    }
+
+    @Test
+    fun `평 표기에는 무엇을 기준으로 한 평인지가 반드시 붙는다`() {
+        // 시장에서 84㎡ 를 "34평(국민평형)" 이라고 부르는 것은 공급면적 기준이다.
+        // 전용면적을 그대로 환산한 25.7평만 적어 두면 사람들이 아는 평형과 어긋나
+        // 잘못 읽는다. 기준을 밝히지 않은 평 표기가 다시 생기지 않게 고정한다.
+        listOf(39.72, 59.99, 84.97, 114.20, 134.50).forEach { area ->
+            val text = AreaFormatter.formatWithPyeong(area)
+            assertTrue("기준이 빠졌다: $text", text.contains("전용"))
+            assertTrue("평 표기가 없다: $text", text.contains("평"))
+        }
+    }
+
+    @Test
+    fun `공급면적을 추정해 만들어 내지 않는다`() {
+        // 실거래가 API 는 전용면적만 준다. 전용률을 가정해 공급면적을 역산하면
+        // 그건 지어낸 값이다 (작업지시서 2.2).
+        val text = AreaFormatter.formatWithPyeong(84.97)
+        // 전용 25.7평이 시장 통칭 34평으로 둔갑해서는 안 된다.
+        assertFalse("공급면적 기준 평수를 지어냈다: $text", text.contains("34평"))
+        assertTrue(text.contains("25.7평"))
     }
 
     @Test

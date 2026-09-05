@@ -50,11 +50,36 @@ object AppColors {
     /** 그림자 대신 쓰는 가는 테두리 */
     val Hairline = Color(0xFFEAECF1)
 
-    val DarkCanvas = Color(0xFF0B0E13)
-    val DarkSurface = Color(0xFF151920)
-    val DarkSurfaceElevated = Color(0xFF1D222B)
-    val DarkOutline = Color(0xFF2A303B)
-    val DarkHairline = Color(0xFF232935)
+    /**
+     * 다크 모드의 중립색.
+     *
+     * 예전 값은 파랑이 섞여 있었다(#0B0E13 처럼 B 가 R 보다 8 이상 높았다).
+     * 배경·카드·칩이 모두 푸른기를 띠면 화면 전체가 파랗게 물들고,
+     * 정작 강조색인 파랑이 묻힌다. 색은 강조에만 쓰고 바탕은 중립으로 둔다.
+     */
+    val DarkCanvas = Color(0xFF0D0D0F)
+    val DarkSurface = Color(0xFF151517)
+    val DarkSurfaceElevated = Color(0xFF1C1C1F)
+    val DarkOutline = Color(0xFF2E2E33)
+    val DarkHairline = Color(0xFF262629)
+
+    /**
+     * 차트·이력의 계열색. **매매와 전세는 색상 자체가 달라야 한다.**
+     *
+     * 이전에는 매매에 primary, 전세에 secondary 를 썼는데 둘 다 파랑이라
+     * (#8FAAFF vs #8AB4FF) 실기기에서 구분이 되지 않았다.
+     * 파랑(매매) ↔ 청록(전세) 으로 색상환에서 떨어뜨리고,
+     * 선 모양(실선/파선)까지 다르게 해서 색을 못 읽어도 구분되게 한다.
+     */
+    val SaleBlue = Color(0xFF2F5BD9)
+    val JeonseTeal = Color(0xFF0E9384)
+    val SaleBlueTint = Color(0xFFE8EEFF)
+    val JeonseTealTint = Color(0xFFDFF5F1)
+
+    val SaleBlueDark = Color(0xFF7FA5FF)
+    val JeonseTealDark = Color(0xFF3FD8B4)
+    val SaleBlueTintDark = Color(0xFF1B2440)
+    val JeonseTealTintDark = Color(0xFF11332E)
 
     /** 데이터 없음 / 미신고 상태 표시색 (강조하지 않는 회색) */
     val NoData = Ink500

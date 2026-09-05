@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      다크 모드의 런치 테마.
+
+      이것이 없으면 기기가 다크 모드여도 첫 프레임이 흰색(values/themes.xml 의
+      canvas_light)으로 칠해져, 앱을 켤 때마다 흰 화면이 번쩍인다.
+    -->
+    <style name="Theme.AptPriceTracker" parent="android:Theme.Material.NoActionBar">
+        <item name="android:fontFamily">@font/pretendard</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/canvas_dark</item>
+    </style>
+</resources>

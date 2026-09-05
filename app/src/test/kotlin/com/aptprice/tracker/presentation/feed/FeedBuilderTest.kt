@@ -73,7 +73,8 @@ class FeedBuilderTest {
 
         assertEquals("피드테스트아파트", item.aptName)
         assertEquals("강남구 역삼동", item.regionLabel)
-        assertEquals("84.97㎡ · 30평대", item.areaLabel)
+        // 카드에는 실제 평수를, 평형대는 필터 칩이 따로 보여 준다.
+        assertEquals("84.97㎡ (전용 25.7평)", item.areaLabel)
         assertEquals("30평대", item.areaBucketLabel)
         assertEquals("10층", item.floorLabel)
         assertEquals("09.03 (목)", item.dateLabel)

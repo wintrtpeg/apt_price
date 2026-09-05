@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="deep_royal_blue">#1E40AF</color>
-    <color name="carmine_red">#DC2626</color>
-    <color name="cobalt_blue">#2563EB</color>
-    <color name="surface_muted">#FAFAFA</color>
+    <!--
+      런치 테마(Compose 가 그리기 전 첫 프레임)의 바탕색.
+      Compose 테마의 background 와 같은 값이어야 앱을 켤 때 색이 튀지 않는다.
+    -->
+    <color name="canvas_light">#F4F5F8</color>
+    <color name="canvas_dark">#0D0D0F</color>
 </resources>

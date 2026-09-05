@@ -1,34 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 아파트 실루엣 위에 상승 추이 선을 얹은 런처 아이콘 전경. -->
+<!--
+  런처 아이콘 전경.
+
+  예전 아이콘은 창문까지 그린 아파트 실루엣 위에 빨간 지그재그 선을 얹은 것이었다.
+  요소가 많아 작은 크기에서 뭉개졌다.
+
+  대신 **올라가는 세 기둥** 하나로 줄였다. 아파트 동으로도, 상승 그래프로도 읽힌다.
+  가장 높은 기둥만 민트색이라 시선이 거기서 멈춘다. 밝기를 셋으로 나눠
+  색을 못 읽어도 순서가 보이게 했다.
+
+  적응형 아이콘은 런처가 원·스쿼클 등 제 모양대로 잘라내므로, 실제로 보장되는 영역은
+  가운데 지름 66(반지름 33)의 원뿐이다. 모든 모서리를 그 안에 넣었다 (최대 32.5).
+  바닥선은 뺐다 — 있으면 그림이 아래로 눌려 "선반에 얹힌" 느낌이 났다.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 왼쪽 저층동 -->
+    <!-- 낮은 동 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M30,58h16v26h-16z" />
-    <!-- 오른쪽 고층동 -->
+        android:fillAlpha="0.36"
+        android:pathData="M30,71.0 L30,58.0 A4.0,4.0 0 0,1 34.0,54 L39.0,54 A4.0,4.0 0 0,1 43,58.0 L43,71.0 Z" />
+
+    <!-- 중간 동 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M52,44h18v40h-18z" />
-    <!-- 창문 -->
+        android:fillAlpha="0.67"
+        android:pathData="M47,71.0 L47,47.0 A4.0,4.0 0 0,1 51.0,43 L56.0,43 A4.0,4.0 0 0,1 60,47.0 L60,71.0 Z" />
+
+    <!-- 가장 높은 동 — 강조 -->
     <path
-        android:fillColor="#1E40AF"
-        android:pathData="M34,63h3v4h-3z M40,63h3v4h-3z M34,71h3v4h-3z M40,71h3v4h-3z
-                          M56,50h3v4h-3z M63,50h3v4h-3z M56,58h3v4h-3z M63,58h3v4h-3z
-                          M56,66h3v4h-3z M63,66h3v4h-3z" />
-    <!-- 상승 추이 선 -->
-    <path
-        android:strokeColor="#DC2626"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M26,44 L38,50 L50,34 L64,38 L78,24" />
-    <!-- 추이 선 끝점 -->
-    <path
-        android:fillColor="#DC2626"
-        android:pathData="M78,24m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+        android:fillColor="#3FD8B4"
+        android:pathData="M64,71.0 L64,35.0 A4.0,4.0 0 0,1 68.0,31 L73.0,31 A4.0,4.0 0 0,1 77,35.0 L77,71.0 Z" />
 </vector>

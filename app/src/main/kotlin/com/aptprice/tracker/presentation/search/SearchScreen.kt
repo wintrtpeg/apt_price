@@ -248,7 +248,7 @@ private fun ResultRow(
                 Text(
                     // 어느 평형으로 열리는지 미리 알린다. 상세에서 바로 바꿀 수 있다.
                     text = "최근 ${DateFormatter.formatFeedDate(summary.latestDealDate)} · " +
-                        "전용 ${AreaFormatter.formatWithBucket(summary.latestAreaM2)}",
+                        "${AreaFormatter.formatWithPyeong(summary.latestAreaM2)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

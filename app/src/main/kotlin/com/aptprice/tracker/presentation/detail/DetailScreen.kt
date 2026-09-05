@@ -4,7 +4,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,6 +43,9 @@ import com.aptprice.tracker.presentation.detail.components.ChartLegend
 import com.aptprice.tracker.presentation.detail.components.PriceChart
 import com.aptprice.tracker.ui.components.AppCard
 import com.aptprice.tracker.ui.components.ChoiceChip
+import com.aptprice.tracker.ui.components.TonalBadge
+import com.aptprice.tracker.ui.theme.AppShape
+import com.aptprice.tracker.ui.theme.LocalSeriesColors
 import com.aptprice.tracker.ui.theme.AppSpacing
 
 /**
@@ -218,47 +226,89 @@ private fun HistoryHeader(count: Int) {
     )
 }
 
+/**
+ * 거래 이력 한 줄.
+ *
+ * 매매와 전세가 한 목록에 섞여 있으므로 **유형을 먼저 읽히게** 한다.
+ * 왼쪽 색 막대와 유형 배지, 그리고 금액 색까지 차트의 계열색과 같은 색을 쓴다 —
+ * 위 차트의 파란 선이 이 줄의 어느 것인지 눈으로 바로 이어진다.
+ */
 @Composable
 private fun HistoryRowView(row: HistoryRow) {
     val decoration = if (row.canceled) TextDecoration.LineThrough else TextDecoration.None
+    val series = LocalSeriesColors.current
+    val isSale = row.isSale
+    val accent = series.of(isSale)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = AppSpacing.Screen, vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = AppSpacing.Screen, vertical = 3.dp)
+            .clip(AppShape.Inner)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(start = 0.dp, end = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
+        // 유형을 색 막대로 먼저 보여 준다. 스크롤할 때 매매/전세 덩어리가 눈에 띈다.
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(46.dp)
+                .background(accent),
+        )
+
+        Column(
+            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TonalBadge(
+                    text = row.typeLabel,
+                    container = series.containerOf(isSale),
+                    content = accent,
+                )
+                if (row.canceled) {
+                    TonalBadge(
+                        text = DataSourceAttribution.CANCELED_BADGE,
+                        container = MaterialTheme.colorScheme.errorContainer,
+                        content = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+                row.floorLabel?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             Text(
                 text = row.dateLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textDecoration = decoration,
             )
-            Text(
-                text = listOfNotNull(
-                    row.typeLabel,
-                    row.floorLabel,
-                    if (row.canceled) DataSourceAttribution.CANCELED_BADGE else null,
-                ).joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (row.canceled) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
         }
-        Text(
-            text = row.priceLabel + if (row.isPeak) "  ▲최고" else "",
-            style = MaterialTheme.typography.titleSmall,
-            color = if (row.isPeak) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            textDecoration = decoration,
-        )
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = row.priceLabel,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (row.canceled) MaterialTheme.colorScheme.onSurfaceVariant else accent,
+                textDecoration = decoration,
+            )
+            if (row.isPeak) {
+                Text(
+                    text = "기간 내 최고",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
     }
 }
 
