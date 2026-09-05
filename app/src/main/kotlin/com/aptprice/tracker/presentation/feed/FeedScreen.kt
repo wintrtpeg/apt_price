@@ -1,5 +1,11 @@
 package com.aptprice.tracker.presentation.feed
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +15,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,13 +39,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aptprice.tracker.core.attribution.DataSourceAttribution
+import com.aptprice.tracker.core.format.AreaBucket
 import com.aptprice.tracker.core.format.DateFormatter
+import com.aptprice.tracker.core.time.TradePeriod
+import com.aptprice.tracker.domain.model.DealTab
 import com.aptprice.tracker.presentation.feed.components.DealTabRow
 import com.aptprice.tracker.presentation.feed.components.EmptyStateView
 import com.aptprice.tracker.presentation.feed.components.ErrorStateView
@@ -48,6 +59,8 @@ import com.aptprice.tracker.presentation.feed.components.FilterBar
 import com.aptprice.tracker.presentation.feed.components.NoticeBanner
 import com.aptprice.tracker.presentation.feed.components.PeriodChips
 import com.aptprice.tracker.presentation.feed.components.RegionFilterSheet
+import com.aptprice.tracker.ui.theme.AppShape
+import com.aptprice.tracker.ui.theme.AppSpacing
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -62,6 +75,7 @@ import java.time.ZoneId
 fun FeedScreen(
     onDealClick: (complexAreaKey: String) -> Unit,
     onSettingsClick: () -> Unit,
+    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel(),
 ) {
@@ -71,25 +85,31 @@ fun FeedScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("실거래", style = MaterialTheme.typography.titleLarge)
+                        Text("실거래", style = MaterialTheme.typography.headlineSmall)
                         Text(
                             text = "${state.filter.regions.summaryLabel()} · ${state.filter.period.label}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 },
                 actions = {
+                    IconButton(onClick = onSearchClick) {
+                        Icon(Icons.Outlined.Search, contentDescription = "아파트 검색")
+                    }
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Filled.Settings, contentDescription = "인증키 설정")
+                        Icon(Icons.Outlined.Tune, contentDescription = "인증키 설정")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
             )
         },
@@ -97,50 +117,26 @@ fun FeedScreen(
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
-            DealTabRow(selected = state.filter.tab, onSelect = viewModel::selectTab)
+            FeedControls(
+                state = state,
+                showSortMenu = showSortMenu,
+                onOpenSortMenu = { showSortMenu = true },
+                onDismissSortMenu = { showSortMenu = false },
+                onSelectSort = viewModel::selectSort,
+                onSelectTab = viewModel::selectTab,
+                onSelectPeriod = viewModel::selectPeriod,
+                onRegionClick = { showRegionSheet = true },
+                onBucketToggle = viewModel::toggleAreaBucket,
+                onCanceledToggle = viewModel::toggleIncludeCanceled,
+            )
 
-            Column(
-                modifier = Modifier.padding(vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            AnimatedVisibility(
+                visible = state.sync.inProgress,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
             ) {
-                PeriodChips(
-                    selected = state.filter.period,
-                    onSelect = viewModel::selectPeriod,
-                )
-
-                Box {
-                    FilterBar(
-                        regionSummary = state.filter.regions.summaryLabel(),
-                        selectedBuckets = state.filter.areaBuckets,
-                        sort = state.filter.sort,
-                        includeCanceled = state.filter.includeCanceled,
-                        onRegionClick = { showRegionSheet = true },
-                        onBucketToggle = viewModel::toggleAreaBucket,
-                        onSortClick = { showSortMenu = true },
-                        onCanceledToggle = viewModel::toggleIncludeCanceled,
-                    )
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
-                    ) {
-                        FeedSort.entries.forEach { sort ->
-                            DropdownMenuItem(
-                                text = { Text(sort.label) },
-                                onClick = {
-                                    viewModel.selectSort(sort)
-                                    showSortMenu = false
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (state.sync.inProgress) {
                 SyncProgressRow(state.sync)
             }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
@@ -161,11 +157,13 @@ fun FeedScreen(
     if (showRegionSheet) {
         RegionFilterSheet(
             selection = state.filter.regions,
-            requestCount = viewModel.currentRequestCount(),
+            requestCountOf = viewModel::requestCountFor,
             periodLabel = state.filter.period.label,
-            onToggleGroup = viewModel::toggleRegionGroup,
-            onToggleRegion = viewModel::toggleRegion,
-            onSelectAll = viewModel::selectAllRegions,
+            // 확인을 눌렀을 때만 조회 조건이 바뀐다. 칩을 누를 때마다 부르지 않는다.
+            onApply = { selection ->
+                viewModel.applyRegions(selection)
+                showRegionSheet = false
+            },
             onDismiss = { showRegionSheet = false },
         )
     }
@@ -173,6 +171,7 @@ fun FeedScreen(
     state.heavyQueryPrompt?.let { prompt ->
         AlertDialog(
             onDismissRequest = viewModel::dismissHeavyQuery,
+            shape = AppShape.Card,
             title = { Text("조회량이 많습니다") },
             text = { Text(prompt.message, style = MaterialTheme.typography.bodyMedium) },
             confirmButton = {
@@ -182,6 +181,65 @@ fun FeedScreen(
                 TextButton(onClick = viewModel::dismissHeavyQuery) { Text("취소") }
             },
         )
+    }
+}
+
+/** 탭 · 기간 · 필터를 한 덩어리로 묶어 목록 위에 고정한다. */
+@Composable
+private fun FeedControls(
+    state: FeedUiState,
+    showSortMenu: Boolean,
+    onOpenSortMenu: () -> Unit,
+    onDismissSortMenu: () -> Unit,
+    onSelectSort: (FeedSort) -> Unit,
+    onSelectTab: (DealTab) -> Unit,
+    onSelectPeriod: (TradePeriod) -> Unit,
+    onRegionClick: () -> Unit,
+    onBucketToggle: (AreaBucket) -> Unit,
+    onCanceledToggle: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        DealTabRow(
+            selected = state.filter.tab,
+            onSelect = onSelectTab,
+            modifier = Modifier.padding(horizontal = AppSpacing.Screen),
+        )
+
+        PeriodChips(selected = state.filter.period, onSelect = onSelectPeriod)
+
+        Box {
+            FilterBar(
+                regionSummary = state.filter.regions.summaryLabel(),
+                selectedBuckets = state.filter.areaBuckets,
+                sort = state.filter.sort,
+                includeCanceled = state.filter.includeCanceled,
+                hasRegion = !state.filter.regions.isEmpty,
+                onRegionClick = onRegionClick,
+                onBucketToggle = onBucketToggle,
+                onSortClick = onOpenSortMenu,
+                onCanceledToggle = onCanceledToggle,
+            )
+            DropdownMenu(
+                expanded = showSortMenu,
+                onDismissRequest = onDismissSortMenu,
+            ) {
+                FeedSort.entries.forEach { sort ->
+                    DropdownMenuItem(
+                        text = { Text(sort.label) },
+                        onClick = {
+                            onSelectSort(sort)
+                            onDismissSortMenu()
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -197,7 +255,12 @@ private fun FeedList(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(
+            start = AppSpacing.Screen,
+            end = AppSpacing.Screen,
+            top = 4.dp,
+            bottom = 24.dp,
+        ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         state.parseFailureNotice?.let {
@@ -238,8 +301,8 @@ private fun SyncProgressRow(sync: SyncStatus) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = AppSpacing.Screen, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
             text = sync.label,
@@ -249,6 +312,7 @@ private fun SyncProgressRow(sync: SyncStatus) {
         LinearProgressIndicator(
             progress = { sync.fraction },
             modifier = Modifier.fillMaxWidth(),
+            strokeCap = StrokeCap.Round,
         )
     }
 }
@@ -256,7 +320,7 @@ private fun SyncProgressRow(sync: SyncStatus) {
 /** 작업지시서 2.2 — 화면 어디서든 출처가 보이도록 하단에 고정한다. */
 @Composable
 private fun AttributionBar(label: String) {
-    Surface(color = MaterialTheme.colorScheme.surface) {
+    Surface(color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxWidth()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text(
@@ -265,7 +329,7 @@ private fun AttributionBar(label: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = AppSpacing.Screen, vertical = 8.dp),
             )
         }
     }

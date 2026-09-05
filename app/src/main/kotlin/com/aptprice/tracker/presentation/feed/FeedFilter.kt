@@ -81,7 +81,10 @@ value class RegionSelection(val lawdCodes: Set<String>) {
     }
 
     companion object {
-        /** 기본값: 대상 지역 전체. */
+        /** 아무 지역도 고르지 않은 상태. 앱을 처음 켰을 때의 기본값이다. */
+        fun none(): RegionSelection = RegionSelection(emptySet())
+
+        /** 대상 지역 전체. */
         fun all(): RegionSelection = RegionSelection(RegionCatalog.lawdCodes.toSet())
 
         fun ofGroups(vararg groups: RegionGroup): RegionSelection =
@@ -93,7 +96,13 @@ value class RegionSelection(val lawdCodes: Set<String>) {
 data class FeedFilter(
     val period: TradePeriod = TradePeriod.DEFAULT,
     val tab: DealTab = DealTab.SALE,
-    val regions: RegionSelection = RegionSelection.all(),
+    /**
+     * 조회할 지역. 기본은 **선택 안 함** 이다.
+     *
+     * 전체 36개 지역을 기본으로 두었더니 앱을 켜자마자 수십~수천 회를 조회해
+     * 공공데이터포털이 429(Too Many Requests) 로 막았다. 볼 지역을 먼저 고르게 한다.
+     */
+    val regions: RegionSelection = RegionSelection.none(),
     /** 비어 있으면 평형대 제한 없음. */
     val areaBuckets: Set<AreaBucket> = emptySet(),
     val sort: FeedSort = FeedSort.LATEST,

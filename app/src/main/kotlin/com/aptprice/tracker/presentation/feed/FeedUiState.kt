@@ -111,8 +111,14 @@ data class FeedUiState(
             return parseNotice to partialNotice
         }
 
+        /** 아직 지역을 고르지 않았을 때. 조회를 시작하지 않는다. */
+        const val NO_REGION_SELECTED = "볼 지역을 먼저 선택해 주세요"
+
         /** 조회 결과가 없을 때 보여줄 문구. */
         fun emptyMessage(filter: FeedFilter): String =
+            if (filter.regions.isEmpty) NO_REGION_SELECTED else emptyMessageForRegions(filter)
+
+        private fun emptyMessageForRegions(filter: FeedFilter): String =
             "${filter.regions.summaryLabel()} · ${filter.period.label} 기준 " +
                 "${filter.tab.label} ${DataSourceAttribution.EMPTY_RESULT}"
     }

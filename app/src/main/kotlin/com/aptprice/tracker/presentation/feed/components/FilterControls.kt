@@ -8,55 +8,39 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.aptprice.tracker.ui.theme.AppSpacing
 import com.aptprice.tracker.core.format.AreaBucket
 import com.aptprice.tracker.core.time.TradePeriod
 import com.aptprice.tracker.domain.model.DealTab
 import com.aptprice.tracker.presentation.feed.FeedSort
+import com.aptprice.tracker.ui.components.ChoiceChip
+import com.aptprice.tracker.ui.components.SegmentedTabs
 
 /** 매매 / 전세 / 월세 3-Way 탭. */
-// PrimaryTabRow 는 Material3 에서 아직 실험 단계라 옵트인이 필요하다.
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DealTabRow(
     selected: DealTab,
     onSelect: (DealTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PrimaryTabRow(
-        selectedTabIndex = DealTab.entries.indexOf(selected),
+    SegmentedTabs(
+        options = DealTab.entries,
+        selected = selected,
+        onSelect = onSelect,
+        labelOf = { it.label },
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) {
-        DealTab.entries.forEach { tab ->
-            Tab(
-                selected = tab == selected,
-                onClick = { onSelect(tab) },
-                text = {
-                    Text(
-                        text = tab.label,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                },
-            )
-        }
-    }
+    )
 }
 
 /**
  * 조회 기간 선택. 기본 2주에서 최대 5년까지.
- * 긴 기간은 조회량이 크므로 [requestCountOf] 로 예상 횟수를 함께 보여준다.
+ * 긴 기간은 조회량이 크므로 지역 시트에서 예상 횟수를 함께 보여준다.
  */
 @Composable
 fun PeriodChips(
@@ -69,15 +53,14 @@ fun PeriodChips(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = AppSpacing.Screen),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         options.forEach { period ->
-            FilterChip(
+            ChoiceChip(
+                label = period.shortLabel,
                 selected = period == selected,
                 onClick = { onSelect(period) },
-                label = { Text(period.shortLabel, style = MaterialTheme.typography.labelLarge) },
-                shape = FilterChipDefaults.shape,
             )
         }
     }
@@ -95,43 +78,51 @@ fun FilterBar(
     onSortClick: () -> Unit,
     onCanceledToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    hasRegion: Boolean = true,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = AppSpacing.Screen),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilterChip(
-            selected = true,
+        // 지역을 아직 고르지 않았으면 이 칩이 다음에 눌러야 할 곳이다. 강조해 둔다.
+        ChoiceChip(
+            label = regionSummary,
+            selected = hasRegion,
             onClick = onRegionClick,
-            label = { Text(regionSummary, style = MaterialTheme.typography.labelLarge) },
             trailingIcon = {
-                Icon(Icons.Filled.ExpandMore, contentDescription = "지역 선택")
+                Icon(
+                    imageVector = if (hasRegion) Icons.Filled.ExpandMore else Icons.Filled.Place,
+                    contentDescription = "지역 선택",
+                    modifier = Modifier.padding(top = 1.dp),
+                )
             },
         )
 
         AreaBucket.entries.forEach { bucket ->
-            FilterChip(
+            ChoiceChip(
+                label = bucket.label,
                 selected = bucket in selectedBuckets,
                 onClick = { onBucketToggle(bucket) },
-                label = { Text(bucket.label, style = MaterialTheme.typography.labelLarge) },
             )
         }
 
-        FilterChip(
+        ChoiceChip(
+            label = sort.label,
             selected = false,
             onClick = onSortClick,
-            label = { Text(sort.label, style = MaterialTheme.typography.labelLarge) },
-            trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = "정렬 선택") },
+            trailingIcon = {
+                Icon(Icons.Filled.ExpandMore, contentDescription = "정렬 선택")
+            },
         )
 
-        FilterChip(
+        ChoiceChip(
+            label = "해제 건 숨기기",
             selected = !includeCanceled,
             onClick = onCanceledToggle,
-            label = { Text("해제 건 숨기기", style = MaterialTheme.typography.labelLarge) },
         )
     }
 }

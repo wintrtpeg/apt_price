@@ -8,7 +8,6 @@ import com.aptprice.tracker.core.time.TradeQueryPlan
 import com.aptprice.tracker.data.remote.api.ServiceKeyProvider
 import com.aptprice.tracker.data.remote.parser.MolitApiError
 import com.aptprice.tracker.domain.model.DealTab
-import com.aptprice.tracker.domain.region.RegionGroup
 import com.aptprice.tracker.domain.repository.TradeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -111,13 +110,15 @@ class FeedViewModel @Inject constructor(
         filterFlow.value = filterFlow.value.let { it.copy(includeCanceled = !it.includeCanceled) }
     }
 
-    fun toggleRegion(lawdCd: String) =
-        updateFilter { it.copy(regions = it.regions.toggleRegion(lawdCd)) }
-
-    fun toggleRegionGroup(group: RegionGroup) =
-        updateFilter { it.copy(regions = it.regions.toggleGroup(group)) }
-
-    fun selectAllRegions() = updateFilter { it.copy(regions = RegionSelection.all()) }
+    /**
+     * 지역 선택을 적용한다.
+     *
+     * 시트에서 칩을 누를 때마다가 아니라 **확인을 눌렀을 때 한 번만** 불린다.
+     * 한 곳씩 켤 때마다 조회하면 열 곳을 고르는 동안 아홉 번을 헛부르게 되고,
+     * 그것이 공공데이터포털의 429(Too Many Requests) 로 이어졌다.
+     */
+    fun applyRegions(selection: RegionSelection) =
+        updateFilter { it.copy(regions = selection) }
 
     /** 조회 범위가 바뀌는 변경. 필터를 갱신하고 필요한 구간을 받아온다. */
     private fun updateFilter(transform: (FeedFilter) -> FeedFilter) {
@@ -149,6 +150,18 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun requestSync(force: Boolean) {
+        // 지역을 고르기 전에는 아무것도 조회하지 않는다.
+        if (filterFlow.value.regions.isEmpty) {
+            _uiState.update {
+                it.copy(
+                    sync = SyncStatus(inProgress = false),
+                    isRefreshing = false,
+                    heavyQueryPrompt = null,
+                    content = FeedContent.Empty(FeedUiState.NO_REGION_SELECTED),
+                )
+            }
+            return
+        }
         val plan = currentPlan()
         // 수천 회짜리 조회는 바로 시작하지 않고 규모를 알린 뒤 확인을 받는다.
         if (plan.isHeavy && !force) {
@@ -248,6 +261,13 @@ class FeedViewModel @Inject constructor(
 
     /** 지금 조건으로 조회하면 몇 번을 부르게 되는지. 화면에 미리 보여 준다. */
     fun currentRequestCount(): Int = currentPlan().requestCount
+
+    /**
+     * 아직 적용하지 않은 선택으로 조회하면 몇 번을 부르게 되는지.
+     * 지역 시트가 확인을 누르기 전에 규모를 보여주는 데 쓴다.
+     */
+    fun requestCountFor(selection: RegionSelection): Int =
+        TradeQueryPlan.of(filterFlow.value.period, today(), selection.codes()).requestCount
 
     private fun today(): LocalDate = LocalDate.now(clock)
 

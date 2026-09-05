@@ -17,9 +17,11 @@ import com.aptprice.tracker.data.remote.parser.MolitApiError
 import com.aptprice.tracker.data.remote.parser.MolitApiException
 import com.aptprice.tracker.data.remote.parser.MolitPage
 import com.aptprice.tracker.data.remote.parser.MolitParser
+import com.aptprice.tracker.data.remote.throttle.MolitHttpException
 import com.aptprice.tracker.domain.model.AptDeal
 import com.aptprice.tracker.domain.model.AptRent
 import com.aptprice.tracker.domain.model.AptTrade
+import com.aptprice.tracker.domain.model.ComplexSummary
 import com.aptprice.tracker.domain.model.DealTab
 import com.aptprice.tracker.domain.region.RegionCatalog
 import com.aptprice.tracker.domain.repository.SyncFailure
@@ -33,6 +35,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -104,6 +107,31 @@ class TradeRepositoryImpl(
                 range.endInclusive.toEpochDay(),
             )
             .map { rows -> rows.map { it.toDomain() }.filterVisible() }
+    }
+
+    override fun searchComplexes(query: String): Flow<List<ComplexSummary>> {
+        val trimmed = query.trim()
+        // 한 글자로는 결과가 너무 많아 쓸모가 없다.
+        if (trimmed.length < MIN_SEARCH_LENGTH) return flowOf(emptyList())
+
+        return tradeDao.searchComplexes("%$trimmed%", SEARCH_LIMIT).map { rows ->
+            rows.filter { RegionCatalog.accepts(it.lawdCd, it.umdNm) }
+                .map { row ->
+                    ComplexSummary(
+                        complexKey = row.complexKey,
+                        aptName = row.aptName,
+                        lawdCd = row.lawdCd,
+                        umdNm = row.umdNm,
+                        regionLabel = listOfNotNull(
+                            RegionCatalog.byLawdCd(row.lawdCd)?.displayName,
+                            row.umdNm.takeIf { it.isNotEmpty() },
+                        ).joinToString(" "),
+                        latestDealDate = LocalDate.ofEpochDay(row.latestEpochDay),
+                        latestAreaM2 = row.latestAreaM2,
+                        dealCount = row.dealCount,
+                    )
+                }
+        }
     }
 
     /** 매매·전월세 양쪽에 있는 평형을 합쳐서 돌려준다. 전세만 있는 평형도 칩에 나와야 한다. */
@@ -210,6 +238,8 @@ class TradeRepositoryImpl(
                 state.abort(e.error)
             }
             state.recordFailure(SyncFailure(key, "[$endpointLabel] ${e.error.userMessage()}"))
+        } catch (e: MolitHttpException) {
+            state.recordFailure(SyncFailure(key, "[$endpointLabel] ${describe(e)}"))
         } catch (e: IOException) {
             state.recordFailure(
                 SyncFailure(key, "[$endpointLabel] 네트워크 오류(${e::class.simpleName}): ${e.message}"),
@@ -306,6 +336,11 @@ class TradeRepositoryImpl(
                 return page
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: MolitHttpException) {
+                // 서비스가 없을 때만 다른 쪽을 시도한다. 429 나 서버 오류에 다른 쪽까지
+                // 부르면 요청량이 두 배가 되어 더 막힌다.
+                if (!e.isNotFound) throw e
+                lastError = e
             } catch (e: Throwable) {
                 lastError = e
             }
@@ -367,6 +402,16 @@ class TradeRepositoryImpl(
             ),
         )
         state.recordFetched(storedRows, failureCount)
+    }
+
+    /** 상태 코드를 사람이 읽을 수 있는 사유로 바꾼다. */
+    private fun describe(e: MolitHttpException): String = when {
+        e.isRateLimited ->
+            "요청이 몰려 공공데이터포털이 일시적으로 막았습니다(429). " +
+                "지역을 줄이거나 잠시 뒤 다시 시도해 주세요"
+        e.isNotFound -> "해당 서비스를 찾을 수 없습니다(404)"
+        e.isServerError -> "공공데이터포털 서버 오류(${e.code})"
+        else -> "조회 실패(HTTP ${e.code})"
     }
 
     private fun today(): LocalDate = LocalDate.now(clock)
@@ -435,9 +480,17 @@ class TradeRepositoryImpl(
     private companion object {
         /**
          * 동시 요청 수.
-         * 공공데이터포털은 과도한 동시 호출에 민감하므로 보수적으로 잡는다.
+         *
+         * 4로 두었더니 실기기에서 HTTP 429(Too Many Requests) 가 쏟아졌다.
+         * 간격 조절은 ThrottleInterceptor 가 맡고, 여기서는 동시에 열리는 연결 수를 줄인다.
          */
-        const val MAX_CONCURRENT_REQUESTS = 4
+        const val MAX_CONCURRENT_REQUESTS = 2
+
+        /** 검색어 최소 길이. 한 글자로는 결과가 너무 많다. */
+        const val MIN_SEARCH_LENGTH = 2
+
+        /** 검색 결과 상한. */
+        const val SEARCH_LIMIT = 50
 
         const val MAX_ATTEMPTS = 3
         const val RETRY_BASE_DELAY_MILLIS = 500L
