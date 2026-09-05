@@ -3,10 +3,14 @@
     <!--
       Compose 로 그리기 전 첫 프레임에도 Pretendard 가 적용되도록 테마에서 지정한다.
       (기기 기본 한글 폰트로 잠깐 그려졌다가 바뀌는 깜빡임 방지)
+
+      windowBackground 은 Compose 테마의 background 와 같은 값으로 맞춘다.
+      다크 모드용은 values-night 에 따로 둔다 — 없으면 어두운 화면에서 앱을 켤 때마다
+      흰 바탕이 한 프레임 번쩍인다.
     -->
     <style name="Theme.AptPriceTracker" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">@font/pretendard</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">@color/surface_muted</item>
+        <item name="android:windowBackground">@color/canvas_light</item>
     </style>
 </resources>

@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -37,6 +38,7 @@ import com.aptprice.tracker.core.format.MoneyFormatter
 import com.aptprice.tracker.presentation.detail.ChartPoint
 import com.aptprice.tracker.presentation.detail.PriceChartData
 import com.aptprice.tracker.presentation.detail.SeriesType
+import com.aptprice.tracker.ui.theme.LocalSeriesColors
 
 /**
  * 실거래가 시계열 라인 차트.
@@ -55,8 +57,9 @@ fun PriceChart(
     var selected by remember(data) { mutableStateOf<ChartPoint?>(null) }
     var selectedType by remember(data) { mutableStateOf<SeriesType?>(null) }
 
-    val saleColor = MaterialTheme.colorScheme.primary
-    val jeonseColor = MaterialTheme.colorScheme.secondary
+    val seriesColors = LocalSeriesColors.current
+    val saleColor = seriesColors.sale
+    val jeonseColor = seriesColors.jeonse
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val peakColor = MaterialTheme.colorScheme.error
 
@@ -100,12 +103,17 @@ fun PriceChart(
                     )
                 }
 
-                data.series.forEach { series ->
-                    val color = if (series.type == SeriesType.SALE) saleColor else jeonseColor
-                    series.segments.forEach { segment ->
-                        drawSegment(segment.points, color, w, h, 2.dp.toPx())
+                data.series.forEach { line ->
+                    val isSale = line.type == SeriesType.SALE
+                    val color = if (isSale) saleColor else jeonseColor
+                    // 색만으로 구분하지 않는다. 매매는 굵은 실선, 전세는 가는 파선이라
+                    // 흑백으로 보거나 색을 구별하기 어려워도 어느 쪽인지 알 수 있다.
+                    val stroke = if (isSale) 2.4.dp.toPx() else 1.6.dp.toPx()
+                    val dash = if (isSale) null else PathEffect.dashPathEffect(floatArrayOf(9f, 7f))
+                    line.segments.forEach { segment ->
+                        drawSegment(segment.points, color, w, h, stroke, dash)
                     }
-                    segmentDots(series.points, color, w, h, 3.dp.toPx())
+                    segmentDots(line.points, color, w, h, if (isSale) 3.2.dp.toPx() else 2.4.dp.toPx())
                 }
 
                 selected?.let { point ->
@@ -142,6 +150,7 @@ private fun DrawScope.drawSegment(
     w: Float,
     h: Float,
     strokeWidth: Float,
+    pathEffect: PathEffect? = null,
 ) {
     if (points.size < 2) return
     val path = Path()
@@ -150,7 +159,11 @@ private fun DrawScope.drawSegment(
         val y = h - point.y * h
         if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
     }
-    drawPath(path = path, color = color, style = Stroke(width = strokeWidth))
+    drawPath(
+        path = path,
+        color = color,
+        style = Stroke(width = strokeWidth, pathEffect = pathEffect),
+    )
 }
 
 private fun DrawScope.segmentDots(
@@ -208,6 +221,7 @@ private fun ChartAxisLabels(data: PriceChartData) {
 /** 계열 색 안내. */
 @Composable
 fun ChartLegend(data: PriceChartData, modifier: Modifier = Modifier) {
+    val seriesColors = LocalSeriesColors.current
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -218,22 +232,21 @@ fun ChartLegend(data: PriceChartData, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val isSale = series.type == SeriesType.SALE
+                // 차트의 선 모양을 그대로 축소해 보여준다 (실선 / 파선).
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
+                        .size(width = 14.dp, height = if (isSale) 3.dp else 2.dp)
                         .background(
-                            color = if (series.type == SeriesType.SALE) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.secondary
-                            },
-                            shape = CircleShape,
-                        ),
+                            color = seriesColors.of(isSale),
+                            shape = RoundedCornerShape(2.dp),
+                        )
+                        .alpha(if (isSale) 1f else 0.85f),
                 )
                 Text(
                     text = "${series.type.label} ${series.points.size}건",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = seriesColors.of(isSale),
                 )
             }
         }

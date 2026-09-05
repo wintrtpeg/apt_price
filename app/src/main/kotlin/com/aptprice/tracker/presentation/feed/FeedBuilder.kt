@@ -86,7 +86,8 @@ object FeedBuilder {
             complexAreaKey = complexAreaKey,
             aptName = aptName,
             regionLabel = listOfNotNull(region?.displayName, umdNm).joinToString(" "),
-            areaLabel = AreaFormatter.formatWithBucket(exclusiveAreaM2),
+            // 목록에서도 ㎡ 옆에 실제 평수를 괄호로 적는다. 평형대는 필터 칩이 이미 보여 준다.
+            areaLabel = AreaFormatter.formatWithPyeong(exclusiveAreaM2),
             areaBucketLabel = areaBucket.label,
             floorLabel = floor?.let { "${it}층" },
             dateLabel = DateFormatter.formatFeedDate(dealDate),

@@ -41,9 +41,13 @@ class DetailUiStateTest {
         val chips = DetailUiState.areaChipsOf(listOf(59.99, 84.97, 114.20), key)
 
         assertEquals(3, chips.size)
-        assertEquals(listOf("59.99㎡", "84.97㎡", "114.2㎡"), chips.map { it.label })
+        // 칩에도 실제 평수를 괄호로 병기한다. ㎡ 만으로는 몇 평인지 감이 오지 않는다.
+        assertEquals(
+            listOf("59.99㎡ (18.1평)", "84.97㎡ (25.7평)", "114.2㎡ (34.5평)"),
+            chips.map { it.label },
+        )
         assertEquals(listOf(false, true, false), chips.map { it.selected })
-        assertEquals("전용 84.97㎡ · 30평대", chips[1].detailLabel)
+        assertEquals("전용 84.97㎡ (25.7평) · 30평대", chips[1].detailLabel)
     }
 
     @Test
@@ -133,7 +137,8 @@ class DetailUiStateTest {
     @Test
     fun `선택된 평형이 제목에 표기된다`() {
         val state = DetailUiState(key = key)
-        assertEquals("84.97㎡ · 30평대", state.areaLabel)
+        // 평형대("30평대")가 아니라 그 타입의 실제 평수를 보여 준다.
+        assertEquals("84.97㎡ (25.7평)", state.areaLabel)
     }
 
     @Test

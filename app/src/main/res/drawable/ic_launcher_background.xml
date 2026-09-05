@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  런처 아이콘 배경.
+
+  단색 로열블루 대신 대각선 그라데이션을 쓴다. 단색은 평평해 보이고,
+  전경의 흰 기둥과 대비가 한쪽으로 몰려 답답했다.
+  아래로 갈수록 어두워져 기둥이 떠 보인다.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108">
+                <item android:offset="0.0" android:color="#FF2B49B8" />
+                <item android:offset="0.55" android:color="#FF1E3A8F" />
+                <item android:offset="1.0" android:color="#FF121A3D" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
