@@ -5,6 +5,7 @@ import com.aptprice.tracker.data.local.dao.SyncStateDao
 import com.aptprice.tracker.data.local.dao.TradeDao
 import com.aptprice.tracker.data.local.entity.ComplexSearchRow
 import com.aptprice.tracker.data.local.entity.RentEntity
+import com.aptprice.tracker.data.local.entity.SparkRow
 import com.aptprice.tracker.data.local.entity.SyncStateEntity
 import com.aptprice.tracker.data.local.entity.TradeEntity
 import com.aptprice.tracker.data.remote.api.MolitApiService
@@ -151,6 +152,17 @@ class FakeTradeDao(
             .take(limit)
     }
 
+    /** 그래프 조회가 몇 번 일어났는지 (카드마다 부르지 않는지 확인용) */
+    val sparkQueries = mutableListOf<List<String>>()
+
+    override fun observeSparkPoints(complexAreaKeys: List<String>): Flow<List<SparkRow>> =
+        version.map {
+            sparkQueries += complexAreaKeys
+            rows.filter { it.complexAreaKey in complexAreaKeys && !it.canceled }
+                .sortedWith(compareBy({ it.complexAreaKey }, { it.dealDateEpochDay }))
+                .map { SparkRow(it.complexAreaKey, it.dealDateEpochDay, it.dealAmountManwon) }
+        }
+
     override suspend fun count(): Int = rows.size
 
     override suspend fun clear() {
@@ -212,6 +224,22 @@ class FakeRentDao : RentDao {
 
     override fun observeAreasOfComplex(complexKey: String): Flow<List<Double>> = version.map {
         rows.filter { it.complexKey == complexKey }.map { it.exclusiveAreaM2 }.distinct().sorted()
+    }
+
+    /** 그래프 조회가 몇 번 일어났는지 (카드마다 부르지 않는지 확인용) */
+    val sparkQueries = mutableListOf<Pair<List<String>, Boolean>>()
+
+    override fun observeSparkPoints(
+        complexAreaKeys: List<String>,
+        jeonseOnly: Boolean,
+    ): Flow<List<SparkRow>> = version.map {
+        sparkQueries += complexAreaKeys to jeonseOnly
+        rows.filter {
+            it.complexAreaKey in complexAreaKeys &&
+                (if (jeonseOnly) it.monthlyRentManwon == 0L else it.monthlyRentManwon > 0L)
+        }
+            .sortedWith(compareBy({ it.complexAreaKey }, { it.dealDateEpochDay }))
+            .map { SparkRow(it.complexAreaKey, it.dealDateEpochDay, it.depositManwon) }
     }
 
     override suspend fun count(): Int = rows.size

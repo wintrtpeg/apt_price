@@ -25,6 +25,42 @@ val molitServiceKey: String = run {
         ?: ""
 }
 
+/**
+ * 이 APK 가 어느 커밋으로 빌드됐는지. 앱 설정 화면 아래에 그대로 표시한다.
+ *
+ * 새 APK 를 깔았는지 예전 것을 보고 있는지 화면만 봐서는 알 수 없어서, 릴리스 제목의
+ * 해시와 대조하느라 여러 번 헷갈렸다. 앱이 스스로 답하게 한다.
+ *
+ * CI 에서는 `GITHUB_SHA` 가 항상 있고 그 값이 릴리스 제목의 해시와 같다.
+ * 로컬에서는 .git 을 직접 읽는다 — git 명령을 실행하지 않으므로 설정 캐시를 깨지 않고,
+ * git 이 없거나 압축본으로 받은 소스여도 빌드가 실패하지 않는다.
+ */
+val gitSha: String = run {
+    System.getenv("GITHUB_SHA")?.trim()?.takeIf { it.isNotEmpty() }?.let { return@run it.take(7) }
+
+    val head = rootProject.file(".git/HEAD")
+    if (!head.isFile) return@run "unknown"
+    val text = runCatching { head.readText().trim() }.getOrNull() ?: return@run "unknown"
+    if (!text.startsWith("ref:")) return@run text.take(7)
+
+    val refPath = text.removePrefix("ref:").trim()
+    val ref = rootProject.file(".git/$refPath")
+    if (ref.isFile) {
+        runCatching { ref.readText().trim().take(7) }.getOrNull() ?: "unknown"
+    } else {
+        // 브랜치가 packed-refs 로 접혀 있는 경우.
+        val packed = rootProject.file(".git/packed-refs")
+        if (!packed.isFile) return@run "unknown"
+        runCatching {
+            packed.readLines()
+                .firstOrNull { it.endsWith(" $refPath") }
+                ?.substringBefore(' ')
+                ?.take(7)
+                ?: "unknown"
+        }.getOrDefault("unknown")
+    }
+}
+
 android {
     namespace = "com.aptprice.tracker"
     compileSdk = 35
@@ -62,6 +98,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "MOLIT_SERVICE_KEY", "\"$molitServiceKey\"")
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         buildConfigField(
             "String",
             "MOLIT_BASE_URL",

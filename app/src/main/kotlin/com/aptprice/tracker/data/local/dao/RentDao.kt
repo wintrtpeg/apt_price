@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import com.aptprice.tracker.data.local.entity.RentEntity
+import com.aptprice.tracker.data.local.entity.SparkRow
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -68,6 +69,28 @@ interface RentDao {
         """,
     )
     fun observeAreasOfComplex(complexKey: String): Flow<List<Double>>
+
+    /**
+     * 카드 미니 그래프용. 목록과 같은 기준(전세/월세)으로 보증금 흐름을 가져온다.
+     * 카드마다 조회하지 않도록 키를 한 번에 넘긴다.
+     *
+     * 매매와 달리 해제 건을 거르지 않는다 — 전월세 자료에는 해제 여부 자체가 없다.
+     * (`apt_rent` 에 그 컬럼이 없다. 없는 것을 거르는 척하지 않는다)
+     */
+    @Query(
+        """
+        SELECT complexAreaKey, dealDateEpochDay, depositManwon AS amountManwon
+        FROM apt_rent
+        WHERE complexAreaKey IN (:complexAreaKeys)
+          AND ((:jeonseOnly = 1 AND monthlyRentManwon = 0)
+            OR (:jeonseOnly = 0 AND monthlyRentManwon > 0))
+        ORDER BY complexAreaKey ASC, dealDateEpochDay ASC
+        """,
+    )
+    fun observeSparkPoints(
+        complexAreaKeys: List<String>,
+        jeonseOnly: Boolean,
+    ): Flow<List<SparkRow>>
 
     @Query("SELECT COUNT(*) FROM apt_rent")
     suspend fun count(): Int

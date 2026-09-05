@@ -288,6 +288,7 @@ private fun FeedList(
                     item = item,
                     sourceLabel = cardSourceLabel,
                     onClick = { onDealClick(item.complexAreaKey) },
+                    sparkline = state.sparklines[item.complexAreaKey],
                 )
             }
 

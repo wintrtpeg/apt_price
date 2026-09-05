@@ -131,6 +131,65 @@ class FeedViewModelTest {
     }
 
     @Test
+    fun `카드마다 그 단지 평형의 추이 그래프가 붙는다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+
+        repo.emit(listOf(trade(day = 1, amount = 80_000), trade(day = 3, amount = 90_000)))
+
+        val items = (vm.uiState.value.content as FeedContent.Items).items
+        val key = items.first().complexAreaKey
+        val spark = vm.uiState.value.sparklines[key]!!
+        assertEquals(2, spark.pointCount)
+        // 오래된 순이라 80,000 → 90,000, 즉 상승이다.
+        assertEquals(ChangeDirection.UP, spark.direction)
+        // 카드가 두 장이어도 같은 단지·평형이면 같은 그래프를 본다.
+        assertTrue(items.all { it.complexAreaKey == key })
+    }
+
+    @Test
+    fun `거래가 한 건뿐인 단지는 그래프 자리를 비운다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+
+        repo.emit(listOf(trade(apt = "한건단지", amount = 87_500)))
+
+        // 한 점으로 선을 그으려면 없는 거래를 지어내야 한다. 그러느니 비운다.
+        assertTrue(vm.uiState.value.sparklines.isEmpty())
+        assertEquals(1, vm.uiState.value.itemCount)
+    }
+
+    @Test
+    fun `그래프는 카드마다가 아니라 한 번에 조회한다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+
+        repo.emit((1..5).map { trade(apt = "단지$it", amount = 80_000L + it * 1_000) })
+
+        // 카드 한 장씩 조회하면 목록이 100장일 때 쿼리도 100번이다.
+        val (keys, tab) = repo.observedSeriesQueries.last()
+        assertEquals(5, keys.distinct().size)
+        assertEquals(DealTab.SALE, tab)
+        assertEquals(5, vm.uiState.value.itemCount)
+    }
+
+    @Test
+    fun `탭을 바꾸면 그래프도 그 탭 기준으로 다시 조회한다`() = runTest {
+        val repo = FakeTradeRepository()
+        repo.fetchedAt = Instant.now(clock)
+        val vm = viewModel(repo)
+        repo.emit(listOf(trade(), jeonse()))
+
+        vm.selectTab(DealTab.JEONSE)
+
+        // 매매 그래프를 전세 카드에 붙여 놓으면 안 된다.
+        assertEquals(DealTab.JEONSE, repo.observedSeriesQueries.last().second)
+    }
+
+    @Test
     fun `보여줄 거래가 없으면 요약도 없다`() = runTest {
         val repo = FakeTradeRepository()
         repo.fetchedAt = Instant.now(clock)

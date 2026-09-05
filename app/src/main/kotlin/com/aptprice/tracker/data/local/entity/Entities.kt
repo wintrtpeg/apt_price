@@ -115,6 +115,18 @@ data class ComplexSearchRow(
     val dealCount: Int,
 )
 
+/**
+ * 카드 미니 그래프용 한 점 (Room 프로젝션).
+ *
+ * 카드마다 따로 조회하면 목록이 100장일 때 쿼리도 100번이다.
+ * 화면에 있는 키를 한 번에 넘겨 한 방에 가져온다.
+ */
+data class SparkRow(
+    val complexAreaKey: String,
+    val dealDateEpochDay: Long,
+    val amountManwon: Long,
+)
+
 /** 캐시 단위를 나누는 엔드포인트 구분. */
 enum class SyncEndpoint {
     /** 아파트 매매 실거래자료 */

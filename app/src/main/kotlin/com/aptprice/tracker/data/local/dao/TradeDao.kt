@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import com.aptprice.tracker.data.local.entity.ComplexSearchRow
+import com.aptprice.tracker.data.local.entity.SparkRow
 import com.aptprice.tracker.data.local.entity.TradeEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -98,6 +99,23 @@ interface TradeDao {
         """,
     )
     fun searchComplexes(pattern: String, limit: Int): Flow<List<ComplexSearchRow>>
+
+    /**
+     * 카드 미니 그래프용. 화면에 있는 단지+평형들의 거래를 한 번에 가져온다.
+     *
+     * 해제된 계약은 뺀다 — 성사되지 않은 가격이라 추이에 넣으면 없는 등락이 그려진다.
+     * 기간으로 자르지 않는다. 카드가 보여 주는 것은 **받아 둔 자료 안에서의 최근 흐름**이고,
+     * 목록 기간(기본 2주)으로 자르면 대부분 한 점만 남아 아무것도 못 그린다.
+     */
+    @Query(
+        """
+        SELECT complexAreaKey, dealDateEpochDay, dealAmountManwon AS amountManwon
+        FROM apt_trade
+        WHERE complexAreaKey IN (:complexAreaKeys) AND canceled = 0
+        ORDER BY complexAreaKey ASC, dealDateEpochDay ASC
+        """,
+    )
+    fun observeSparkPoints(complexAreaKeys: List<String>): Flow<List<SparkRow>>
 
     @Query("SELECT COUNT(*) FROM apt_trade")
     suspend fun count(): Int

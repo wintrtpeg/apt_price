@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aptprice.tracker.BuildConfig
 import com.aptprice.tracker.core.attribution.DataSourceAttribution
 import com.aptprice.tracker.ui.theme.AppShape
 import com.aptprice.tracker.ui.theme.AppSpacing
@@ -164,7 +165,33 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            BuildStamp()
         }
+    }
+}
+
+/**
+ * 이 APK 가 어느 커밋으로 빌드됐는지.
+ *
+ * 새 APK 를 깔았는지 예전 것을 보고 있는지 화면만으로는 알 수 없어 여러 번 헷갈렸다.
+ * 여기 적힌 해시를 릴리스 제목의 해시와 맞춰 보면 바로 확인된다.
+ */
+@Composable
+private fun BuildStamp() {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = "앱 버전 ${BuildConfig.VERSION_NAME} · 빌드 ${BuildConfig.GIT_SHA}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = "GitHub 릴리스 제목의 괄호 안 해시와 같으면 최신 버전입니다.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

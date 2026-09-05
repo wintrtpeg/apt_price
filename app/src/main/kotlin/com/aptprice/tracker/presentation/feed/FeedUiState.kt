@@ -75,6 +75,11 @@ data class FeedUiState(
      * 목록에서 바로 접은 값이라 필터가 어긋날 일이 없다.
      */
     val summary: FeedSummary? = null,
+    /**
+     * 카드마다 그리는 미니 추이 그래프. 키는 [FeedItemUi.complexAreaKey].
+     * 거래가 한 건뿐인 단지·평형은 아예 들어 있지 않고, 카드는 그 자리를 비운다.
+     */
+    val sparklines: Map<String, Sparkline> = emptyMap(),
     /** 확인이 필요한 무거운 조회. null 이면 확인 대기 없음. */
     val heavyQueryPrompt: HeavyQueryPrompt? = null,
     /** 읽지 못한 행이 있었을 때의 알림. 파서 점검 신호이므로 숨기지 않는다. */
