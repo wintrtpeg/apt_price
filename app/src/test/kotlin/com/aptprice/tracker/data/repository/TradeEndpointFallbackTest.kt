@@ -7,6 +7,7 @@ import com.aptprice.tracker.data.remote.throttle.MolitHttpException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
@@ -172,6 +173,56 @@ class TradeEndpointFallbackTest {
         assertTrue("기본 자료로 성공해야 한다: ${report.failures.map { it.message }}", report.failures.isEmpty())
         assertTrue("기본 자료를 불렀어야 한다", api.basicCalls.isNotEmpty())
         assertEquals("매매 거래가 저장되어야 한다", 2, dao.rows.size)
+    }
+
+    @Test
+    fun `상세는 미신청이고 기본만 승인된 계정에서 매매가 나온다`() = runBlocking {
+        // 실사용자 계정의 실제 상태:
+        //   [승인] 국토교통부_아파트 전월세 실거래가 자료
+        //   [승인] 국토교통부_아파트 매매 실거래가 자료      ← 기본
+        //   (아파트 매매 실거래 "상세" 자료는 별개 데이터셋이라 목록에 없다)
+        // 앱은 상세를 먼저 부르므로 403 이 나고, 기본으로 갈아타야 매매가 보인다.
+        //
+        // 기본 자료는 한글 태그를 쓰고 해제여부·등기일자 필드가 없다. 값 앞뒤 공백도 그대로 온다.
+        val basicXml = """
+            <response>
+              <header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE.</resultMsg></header>
+              <body><items>
+                <item>
+                  <거래금액> 82,500</거래금액>
+                  <건축년도>2006</건축년도>
+                  <년>2026</년><월>9</월><일>3</일>
+                  <법정동> 역삼동</법정동>
+                  <아파트>역삼래미안</아파트>
+                  <전용면적>84.97</전용면적>
+                  <지번>718</지번>
+                  <지역코드>11680</지역코드>
+                  <층>10</층>
+                </item>
+              </items>
+              <numOfRows>10</numOfRows><pageNo>1</pageNo><totalCount>1</totalCount></body>
+            </response>
+        """.trimIndent()
+
+        val api = FakeMolitApiService({ _, _, _ -> basicXml }, { _, _, _ -> emptyXml })
+        api.detailFailure = { accessDenied() }
+        val dao = FakeTradeDao()
+        val plan = TradeQueryPlan.of(TradePeriod.TWO_WEEKS, today, listOf("11680"))
+
+        val report = repository(api, dao).sync(plan)
+
+        assertTrue("매매가 실패했다: ${report.failures.map { it.message }}", report.failures.isEmpty())
+        assertEquals("읽지 못한 행이 있으면 안 된다", 0, report.parseFailures)
+        assertEquals(2, dao.rows.size)
+
+        val row = dao.rows.first()
+        assertEquals("역삼래미안", row.aptName)
+        // 앞뒤 공백이 남으면 단지 키가 어긋나 상세 화면이 자기 거래를 못 찾는다.
+        assertEquals("역삼동", row.umdNm)
+        assertEquals(82_500L, row.dealAmountManwon)
+        assertEquals(84.97, row.exclusiveAreaM2, 1e-9)
+        // 기본 자료에는 해제여부가 없다. 없는 것을 "해제됨" 으로 지어내지 않는다.
+        assertFalse(row.canceled)
     }
 
     @Test
