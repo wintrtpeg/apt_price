@@ -33,18 +33,21 @@ class ThrottleInterceptor(
 
                 response.code == MolitHttpException.TOO_MANY_REQUESTS -> {
                     val retryAfter = response.header("Retry-After")?.toLongOrNull()
+                    val body = response.errorBody()
                     response.close()
                     throttle.onRateLimited()
                     if (attempt == maxRetries) {
-                        throw MolitHttpException(response.code, retryAfter)
+                        throw MolitHttpException(response.code, retryAfter, body)
                     }
                     sleep(throttle.retryDelayMillis(attempt, retryAfter))
                 }
 
                 else -> {
                     val code = response.code
+                    // 공공데이터포털은 실제 사유를 본문에 담는다. 버리면 원인을 알 수 없다.
+                    val body = response.errorBody()
                     response.close()
-                    throw MolitHttpException(code)
+                    throw MolitHttpException(code, body = body)
                 }
             }
         }
@@ -52,7 +55,19 @@ class ThrottleInterceptor(
         throw MolitHttpException(MolitHttpException.TOO_MANY_REQUESTS)
     }
 
+    /**
+     * 오류 본문을 훔쳐본다. `peekBody` 는 원본 스트림을 소비하지 않으므로
+     * 이 뒤에 `close()` 를 불러도 안전하다. 본문이 클 수 있으니 상한을 둔다.
+     */
+    private fun Response.errorBody(): String? =
+        runCatching { peekBody(ERROR_BODY_LIMIT).string() }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+
     private companion object {
         const val DEFAULT_MAX_RETRIES = 3
+
+        /** 오류 본문에서 읽어 둘 최대 바이트. 사유 한 줄이면 충분하다. */
+        const val ERROR_BODY_LIMIT = 8_192L
     }
 }

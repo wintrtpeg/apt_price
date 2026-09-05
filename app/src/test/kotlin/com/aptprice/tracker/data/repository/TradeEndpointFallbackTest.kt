@@ -143,6 +143,96 @@ class TradeEndpointFallbackTest {
         assertEquals(2, dao.rows.size)
     }
 
+    /**
+     * 활용신청하지 않은 API 를 부르면 공공데이터포털이 돌려주는 본문.
+     * 상태 코드는 403 이고, 진짜 사유는 이 본문에 들어 있다.
+     */
+    private val accessDeniedXml = """
+        <OpenAPI_ServiceResponse><cmmMsgHeader>
+          <errMsg>SERVICE ERROR</errMsg>
+          <returnAuthMsg>SERVICE_ACCESS_DENIED_ERROR</returnAuthMsg>
+          <returnReasonCode>20</returnReasonCode>
+        </cmmMsgHeader></OpenAPI_ServiceResponse>
+    """.trimIndent()
+
+    private fun accessDenied(): Nothing =
+        throw MolitHttpException(MolitHttpException.FORBIDDEN, body = accessDeniedXml)
+
+    @Test
+    fun `상세 자료가 403 이면 기본 자료로 넘어간다`() = runBlocking {
+        // 실기기 증상: 전월세는 나오는데 매매만 HTTP 403. 매매 자료는 상세·기본 두 서비스로
+        // 나뉘어 있어, 활용신청한 쪽이 기본이면 상세는 403 이 난다. 갈아타야 한다.
+        val api = FakeMolitApiService({ _, _, _ -> tradeXml }, { _, _, _ -> emptyXml })
+        api.detailFailure = { accessDenied() }
+        val dao = FakeTradeDao()
+        val plan = TradeQueryPlan.of(TradePeriod.TWO_WEEKS, today, listOf("11680"))
+
+        val report = repository(api, dao).sync(plan)
+
+        assertTrue("기본 자료로 성공해야 한다: ${report.failures.map { it.message }}", report.failures.isEmpty())
+        assertTrue("기본 자료를 불렀어야 한다", api.basicCalls.isNotEmpty())
+        assertEquals("매매 거래가 저장되어야 한다", 2, dao.rows.size)
+    }
+
+    @Test
+    fun `둘 다 403 이면 할 일을 알려 준다`() = runBlocking {
+        val api = FakeMolitApiService({ _, _, _ -> accessDenied() }, { _, _, _ -> emptyXml })
+        val dao = FakeTradeDao()
+        val plan = TradeQueryPlan.of(TradePeriod.TWO_WEEKS, today, listOf("11680"))
+
+        val report = repository(api, dao).sync(plan)
+
+        val message = report.failures.first { it.message.startsWith("[매매]") }.message
+        // "HTTP 403" 만 띄우면 사용자가 할 수 있는 일이 없다. 무엇을 해야 하는지 적는다.
+        assertTrue("무엇을 해야 하는지 없다: $message", message.contains("활용신청"))
+        assertTrue("어디서 해야 하는지 없다: $message", message.contains("data.go.kr"))
+    }
+
+    @Test
+    fun `매매가 막혀도 전월세는 계속 받아온다`() = runBlocking {
+        val rentXml = """
+            <response><header><resultCode>000</resultCode></header><body><items><item>
+            <aptNm>전세건</aptNm><deposit>50,000</deposit><monthlyRent>0</monthlyRent>
+            <dealYear>2026</dealYear><dealMonth>9</dealMonth><dealDay>1</dealDay>
+            <excluUseAr>84.97</excluUseAr><sggCd>11680</sggCd><umdNm>역삼동</umdNm>
+            </item></items><totalCount>1</totalCount></body></response>
+        """.trimIndent()
+        val api = FakeMolitApiService({ _, _, _ -> accessDenied() }, { _, _, _ -> rentXml })
+        val rentDao = FakeRentDao()
+        val repository = TradeRepositoryImpl(
+            api = api,
+            serviceKey = ServiceKeyProvider(FakeServiceKeyStore("KEY"), buildConfigKey = ""),
+            tradeDao = FakeTradeDao(),
+            rentDao = rentDao,
+            syncStateDao = FakeSyncStateDao(),
+            ioDispatcher = Dispatchers.Unconfined,
+            clock = Clock.fixed(Instant.parse("2026-09-04T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val plan = TradeQueryPlan.of(TradePeriod.THREE_MONTHS, today, listOf("11680"))
+
+        val report = repository.sync(plan)
+
+        // 매매 권한이 없다고 전월세까지 멈추면, 볼 수 있었던 자료마저 못 보게 된다.
+        assertEquals("전월세는 모든 구간이 들어와야 한다", plan.monthCount, rentDao.rows.size)
+        assertTrue(report.failures.all { it.message.startsWith("[매매]") })
+    }
+
+    @Test
+    fun `권한이 없다고 확인되면 같은 API 를 계속 부르지 않는다`() = runBlocking {
+        val api = FakeMolitApiService({ _, _, _ -> accessDenied() }, { _, _, _ -> emptyXml })
+        val dao = FakeTradeDao()
+        // 4개월 구간. 막지 않으면 4구간 × (상세+기본) = 8회를 부른다.
+        val plan = TradeQueryPlan.of(TradePeriod.THREE_MONTHS, today, listOf("11680"))
+
+        repository(api, dao).sync(plan)
+
+        val withoutGuard = plan.monthCount * 2
+        assertTrue(
+            "권한 없음이 확인된 뒤에도 계속 부르고 있다 (${api.tradeCalls.size}회 / 무방비면 ${withoutGuard}회)",
+            api.tradeCalls.size < withoutGuard,
+        )
+    }
+
     @Test
     fun `전월세는 매매와 무관하게 동작한다`() = runBlocking {
         val rentXml = """

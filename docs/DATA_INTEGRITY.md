@@ -137,8 +137,30 @@
 | 429 재시도 | 지수 backoff, 서버의 `Retry-After` 우선 | `RequestThrottleTest`, `ThrottleInterceptorTest` |
 | 429 + 매매 엔드포인트 | **다른 쪽으로 넘어가지 않음** (요청량이 두 배가 된다) | `TradeEndpointFallbackTest` |
 | 404 + 매매 엔드포인트 | 다른 쪽으로 넘어감 (서비스 자체가 없는 경우) | `TradeEndpointFallbackTest` |
+| 403 + 매매 엔드포인트 | 다른 쪽으로 넘어감 (활용신청한 서비스가 둘 중 한쪽일 수 있다) | `TradeEndpointFallbackTest` |
+| 403/404 재시도 | 하지 않음 (답이 바뀌지 않는다 — 구간당 3배를 부르던 낭비) | `TradeEndpointFallbackTest` |
+| 권한 없음이 확인된 엔드포인트 | 더 부르지 않음 (수천 구간을 같은 이유로 실패시키지 않는다) | `TradeEndpointFallbackTest` |
 | 동시 요청 수 | 2 (4에서 낮춤) | — |
 | 재시도 소진 | 실패를 숨기지 않고 `429` 사유를 화면에 남김 | `ThrottleInterceptorTest` |
+
+---
+
+## 2.7 실패 사유를 상태 코드로 뭉개지 않는다
+
+공공데이터포털은 **진짜 사유를 상태 코드가 아니라 응답 본문에 담는다.**
+`HTTP 403` 만 화면에 띄우면 사용자가 할 수 있는 일이 없다.
+
+| 지점 | 동작 | 검증 |
+| :--- | :--- | :--- |
+| 2xx 아닌 응답 | 본문을 `MolitHttpException.body` 에 실어 올린다 | `ThrottleInterceptorTest` |
+| 본문이 오류 XML | 그 사유(`returnAuthMsg`)를 화면 문구로 쓴다 | `MolitParser.parseError` |
+| 본문이 없을 때 | 상태 코드로 판단하되 성격은 구분한다 | `ThrottleInterceptorTest` |
+| 코드 20 / HTTP 403 | `ACCESS_DENIED` — **무엇을 해야 하는지** 적는다 | `TradeEndpointFallbackTest` |
+
+`ACCESS_DENIED` 는 "인증키가 틀림" 과 다르다. 키는 유효한데 **그 API 를 활용신청하지
+않은** 상태다. 실기기에서 전월세는 나오는데 매매만 403 이던 것이 바로 이 경우였다.
+그래서 이 오류는 전체 동기화를 멈추지 않고 **해당 엔드포인트만 접는다** — 매매가
+막혔다고 전월세까지 멈추면 볼 수 있었던 자료마저 못 보게 된다.
 
 ---
 

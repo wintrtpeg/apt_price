@@ -33,13 +33,16 @@ class ThrottleInterceptorTest {
     private val request = Request.Builder().url("https://apis.data.go.kr/1613000/").build()
 
     /** 닫혔는지 알 수 있는 본문. 실패한 응답을 닫지 않으면 연결이 샌다. */
-    private class TrackingBody : ResponseBody() {
+    private class TrackingBody(content: String = "") : ResponseBody() {
         var closed = false
             private set
 
+        private val buffer = Buffer().writeUtf8(content)
+        private val length = buffer.size
+
         override fun contentType(): MediaType? = null
-        override fun contentLength(): Long = 0L
-        override fun source(): BufferedSource = Buffer()
+        override fun contentLength(): Long = length
+        override fun source(): BufferedSource = buffer
         override fun close() {
             closed = true
             super.close()
@@ -164,6 +167,41 @@ class ThrottleInterceptorTest {
         // 저장소는 404 일 때만 다른 매매 엔드포인트를 시도한다. 이 구분이 그 근거다.
         assertTrue(error.isNotFound)
         assertFalse(error.isRateLimited)
+    }
+
+    @Test
+    fun `실패 사유를 본문째로 올려보낸다`() {
+        // 공공데이터포털은 상태 코드가 아니라 본문에 진짜 사유를 담는다.
+        // 본문을 버리면 화면에 "HTTP 403" 만 남아 사용자가 할 일을 알 수 없다.
+        val reason = """
+            <OpenAPI_ServiceResponse><cmmMsgHeader>
+              <returnAuthMsg>SERVICE_ACCESS_DENIED_ERROR</returnAuthMsg>
+              <returnReasonCode>20</returnReasonCode>
+            </cmmMsgHeader></OpenAPI_ServiceResponse>
+        """.trimIndent()
+        val chain = FakeChain(mutableListOf(response(403, body = TrackingBody(reason))))
+
+        val error = assertThrows(MolitHttpException::class.java) {
+            interceptor().intercept(chain)
+        }
+
+        assertEquals(403, error.code)
+        assertTrue(error.isAccessDenied)
+        assertTrue("본문이 사라졌다: ${error.body}", error.body!!.contains("SERVICE_ACCESS_DENIED_ERROR"))
+        // 로그·화면에 상태 코드만 남지 않도록 예외 메시지에도 사유가 들어간다.
+        assertTrue("메시지에 사유가 없다: ${error.message}", error.message!!.contains("SERVICE_ACCESS_DENIED_ERROR"))
+    }
+
+    @Test
+    fun `본문이 없어도 상태 코드로 판단할 수 있다`() {
+        val chain = FakeChain(mutableListOf(response(403)))
+
+        val error = assertThrows(MolitHttpException::class.java) {
+            interceptor().intercept(chain)
+        }
+
+        assertTrue(error.isAccessDenied)
+        assertEquals("HTTP 403", error.message)
     }
 
     @Test

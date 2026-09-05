@@ -227,18 +227,32 @@ class TradeRepositoryImpl(
     ) {
         // 어느 API 가 실패했는지 알 수 있게 사유에 함께 남긴다.
         val endpointLabel = if (endpoint == SyncEndpoint.TRADE) "매매" else "전월세"
+
+        // 이 엔드포인트는 권한이 없다고 이미 확인됐다. 같은 실패를 수천 번 되풀이하지 않는다.
+        state.deniedError(endpoint)?.let { denied ->
+            state.recordFailure(SyncFailure(key, "[$endpointLabel] ${denied.userMessage()}"))
+            return
+        }
+
         try {
             when (endpoint) {
                 SyncEndpoint.TRADE -> syncTradeMonth(key, encodedKey, state)
                 SyncEndpoint.RENT -> syncRentMonth(key, encodedKey, state)
             }
         } catch (e: MolitApiException) {
-            if (!e.error.isRetriable) {
+            when {
+                // 이 API 만 권한이 없는 것이면 전체를 멈추지 않는다.
+                // 매매가 막혔어도 전월세는 볼 수 있어야 한다.
+                e.error.kind == MolitApiError.Kind.ACCESS_DENIED ->
+                    state.denyEndpoint(endpoint, e.error)
+
                 // 인증키 오류·트래픽 초과 → 남은 수천 건을 헛되이 때리지 않고 즉시 중단한다.
-                state.abort(e.error)
+                !e.error.isRetriable -> state.abort(e.error)
             }
             state.recordFailure(SyncFailure(key, "[$endpointLabel] ${e.error.userMessage()}"))
         } catch (e: MolitHttpException) {
+            // 권한이 없는 것이면 이 엔드포인트는 여기서 접는다. 다시 시도해도 같은 결과다.
+            if (e.isAccessDenied) state.denyEndpoint(endpoint, asApiError(e))
             state.recordFailure(SyncFailure(key, "[$endpointLabel] ${describe(e)}"))
         } catch (e: IOException) {
             state.recordFailure(
@@ -337,9 +351,13 @@ class TradeRepositoryImpl(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: MolitHttpException) {
-                // 서비스가 없을 때만 다른 쪽을 시도한다. 429 나 서버 오류에 다른 쪽까지
-                // 부르면 요청량이 두 배가 되어 더 막힌다.
-                if (!e.isNotFound) throw e
+                // 그 서비스에 닿을 수 없을 때만 다른 쪽을 시도한다.
+                //   404 = 서비스가 없음
+                //   403/401 = 인증키에 그 서비스 권한이 없음 (활용신청 안 됨)
+                // 매매 자료는 상세·기본 두 서비스로 나뉘어 있어 한쪽만 열려 있을 수 있으므로,
+                // 권한 거부야말로 갈아타 봐야 하는 경우다.
+                // 반면 429 나 서버 오류에 다른 쪽까지 부르면 요청량이 두 배가 되어 더 막힌다.
+                if (!e.isNotFound && !e.isAccessDenied) throw e
                 lastError = e
             } catch (e: Throwable) {
                 lastError = e
@@ -374,6 +392,12 @@ class TradeRepositoryImpl(
             } catch (e: MolitApiException) {
                 if (!e.error.isRetriable) throw e
                 lastError = e
+            } catch (e: MolitHttpException) {
+                // MolitHttpException 은 IOException 이라 아래 분기에 걸려 재시도된다.
+                // 권한 없음(403)·서비스 없음(404)은 몇 번을 물어도 같은 답이 온다.
+                // 그대로 두면 한 구간에 3배를 부르게 되고, 그것이 429 로 가는 길이다.
+                if (e.isAccessDenied || e.isNotFound) throw e
+                lastError = e
             } catch (e: IOException) {
                 lastError = e
             }
@@ -404,14 +428,32 @@ class TradeRepositoryImpl(
         state.recordFetched(storedRows, failureCount)
     }
 
-    /** 상태 코드를 사람이 읽을 수 있는 사유로 바꾼다. */
+    /**
+     * 2xx 아닌 응답을 사유로 바꾼다.
+     *
+     * 본문에 담긴 사유를 우선한다. 상태 코드는 "무엇을 해야 하는지" 를 알려 주지 않지만
+     * 본문에는 `SERVICE_ACCESS_DENIED_ERROR` 같은 실제 원인이 들어 있다.
+     */
+    private fun asApiError(e: MolitHttpException): MolitApiError =
+        e.body?.let { runCatching { MolitParser.parseError(it) }.getOrNull() }
+            ?: MolitApiError(
+                code = e.code.toString(),
+                message = e.message.orEmpty(),
+                kind = when {
+                    // 활용신청이 안 된 서비스. 다시 시도해도 소용없고, 사용자가 할 일이 있다.
+                    e.isAccessDenied -> MolitApiError.Kind.ACCESS_DENIED
+                    else -> MolitApiError.Kind.SERVICE_ERROR
+                },
+            )
+
+    /** 화면에 그대로 띄울 사유. */
     private fun describe(e: MolitHttpException): String = when {
         e.isRateLimited ->
             "요청이 몰려 공공데이터포털이 일시적으로 막았습니다(429). " +
                 "지역을 줄이거나 잠시 뒤 다시 시도해 주세요"
         e.isNotFound -> "해당 서비스를 찾을 수 없습니다(404)"
         e.isServerError -> "공공데이터포털 서버 오류(${e.code})"
-        else -> "조회 실패(HTTP ${e.code})"
+        else -> asApiError(e).userMessage()
     }
 
     private fun today(): LocalDate = LocalDate.now(clock)
@@ -436,6 +478,16 @@ class TradeRepositoryImpl(
         @Volatile
         private var abortError: MolitApiError? = null
 
+        /**
+         * 권한이 없어 포기한 엔드포인트.
+         *
+         * 매매 활용신청이 안 되어 있으면 매매 구간은 하나도 빠짐없이 같은 이유로 실패한다.
+         * 5년 × 36지역이면 수천 번을 헛되이 때리게 되므로, 한 번 확인되면 그 엔드포인트는
+         * 더 부르지 않는다. **다른 엔드포인트는 계속 간다** — 매매가 막혔다고 전월세까지
+         * 멈추면, 볼 수 있었던 자료마저 못 보게 된다.
+         */
+        private val deniedEndpoints = java.util.concurrent.ConcurrentHashMap<SyncEndpoint, MolitApiError>()
+
         @Volatile
         var completed: Int = 0
             private set
@@ -445,6 +497,12 @@ class TradeRepositoryImpl(
         fun abort(error: MolitApiError) {
             if (abortError == null) abortError = error
         }
+
+        fun denyEndpoint(endpoint: SyncEndpoint, error: MolitApiError) {
+            deniedEndpoints.putIfAbsent(endpoint, error)
+        }
+
+        fun deniedError(endpoint: SyncEndpoint): MolitApiError? = deniedEndpoints[endpoint]
 
         fun recordSkipped() {
             skippedFresh++
