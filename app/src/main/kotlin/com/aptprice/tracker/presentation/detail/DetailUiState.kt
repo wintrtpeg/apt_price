@@ -92,7 +92,8 @@ data class DetailUiState(
                     // 평형대(30평대 등)로는 서로 다른 타입이 한 칩으로 뭉개진다.
                     // 칩에도 실제 평수를 괄호로 함께 적는다. ㎡ 만으로는 몇 평인지 감이 안 온다.
                     label = AreaFormatter.formatWithPyeong(area),
-                    detailLabel = "전용 ${AreaFormatter.formatWithPyeong(area)} · ${AreaBucket.of(area).label}",
+                    // formatWithPyeong 이 이미 "전용" 을 붙이므로 앞에 또 붙이지 않는다.
+                    detailLabel = "${AreaFormatter.formatWithPyeong(area)} · ${AreaBucket.of(area).label}",
                     key = ComplexAreaKey.ofComplex(complexKey, area),
                     selected = ComplexAreaKey.formatArea(area) == selectedArea,
                 )

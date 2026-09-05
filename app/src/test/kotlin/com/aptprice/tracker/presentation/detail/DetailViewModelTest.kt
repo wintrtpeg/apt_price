@@ -66,7 +66,7 @@ class DetailViewModelTest {
         val state = vm.uiState.value
         assertEquals("상세뷰모델", state.aptName)
         assertEquals("강남구 역삼동", state.regionLabel)
-        assertEquals("84.97㎡ (25.7평)", state.areaLabel)
+        assertEquals("84.97㎡ (전용 25.7평)", state.areaLabel)
         assertEquals(TradePeriod.ONE_YEAR, state.period)
     }
 
@@ -126,7 +126,7 @@ class DetailViewModelTest {
         repo.emit(listOf(trade(10, 87_500, area = 84.97), trade(20, 60_000, area = 59.99)))
 
         val chips = vm.uiState.value.areaChips
-        assertEquals(listOf("59.99㎡ (18.1평)", "84.97㎡ (25.7평)"), chips.map { it.label })
+        assertEquals(listOf("59.99㎡ (전용 18.1평)", "84.97㎡ (전용 25.7평)"), chips.map { it.label })
         assertEquals(listOf(false, true), chips.map { it.selected })
     }
 
@@ -142,7 +142,7 @@ class DetailViewModelTest {
 
         assertEquals("같은 단지라 이미 받아 둔 데이터로 충분하다", syncsBefore, repo.syncedPlans.size)
         assertEquals(smaller.key.raw, vm.uiState.value.key!!.raw)
-        assertEquals("59.99㎡ (18.1평)", vm.uiState.value.areaLabel)
+        assertEquals("59.99㎡ (전용 18.1평)", vm.uiState.value.areaLabel)
         assertTrue(vm.uiState.value.areaChips.first { it.areaM2 == 59.99 }.selected)
     }
 
